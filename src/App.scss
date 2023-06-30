@@ -1,0 +1,150 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+#inspector,
+#layout-grid-container,
+#main-view {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+#layout-grid-container, .rs-dropdown-menu {
+  background-color: #1a1a1a !important;
+}
+
+
+#inspector {
+  width: 350px;
+  height: 100%;
+  background: #1a1a1a;
+  overflow-y: scroll;
+  border-left: 1px rgb(50, 50, 50) solid;
+
+  h1 {
+    margin: 15px;
+    margin-bottom: 20px;
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .rs-panel-group {
+    border-top: 1px solid rgb(50, 50, 50);
+    border-radius: 0px;
+  }
+
+  .rs-panel + .rs-panel:before {
+    border-color: transparent;
+    left: 0px;
+    right: 0px;
+  }
+
+  .rs-panel {
+    border-radius: 0px;
+    border-bottom: 1px solid rgb(50, 50, 50);
+  }
+
+  .rs-panel-collapse[aria-expanded="true"] {
+    height: auto;
+  }
+
+  .rs-panel-header {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .rs-panel-collapsible > .rs-panel-header > .rs-icon {
+    top: 16px;
+  }
+
+  .rs-anim-collapsing,
+  .rs-icon {
+    transition-duration: 0s;
+  }
+
+  .rs-panel-title {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    font-size: 14px;
+  }
+}
+
+.rs-panel-header + .rs-panel-body,
+.rs-panel-header + .rs-panel-collapse .rs-panel-body {
+  padding-top: 0 !important;
+}
+
+.rs-panel-body,
+.rs-panel-header {
+  padding: 15px !important;
+}
+
+#layout-grid-container {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  position: relative;
+  overflow-y: scroll;
+}
+
+#main-view {
+  flex-grow: 1;
+}
+
+.flexlayout__tabset,
+.flexlayout__tab,
+.flexlayout__layout {
+  background: transparent !important;
+}
+
+.flexlayout__tab_button--selected,
+.flexlayout__tabset-maximized {
+  background-color: rgb(45 45 45) !important;
+}
+
+.flexlayout__tabset-selected {
+  background-image: none !important;
+  .flexlayout__tab_button--selected {
+    font-weight: bold;
+    background: rgb(80, 80, 80) !important;
+  }
+}
+
+.flexlayout__splitter {
+  background-color: rgb(50, 50, 50) !important;
+}
+
+.flexlayout__tabset_tabbar_outer, .flexlayout__tabset_tabbar_inner {
+  &:has(.rs-dropdown-open) {
+    overflow: visible !important;
+  }
+}
+
+.flexlayout__layout {
+  pointer-events: none;
+  .flexlayout__tabset_content > *,
+  .flexlayout__splitter,
+  .flexlayout__tabset_tabbar_outer {
+    pointer-events: auto;
+  }
+}
+
+.flexlayout__tab_button_top {
+  border-radius: 0px !important;
+}
+
+// Only enable events on inactive tabs using z-control
+.flexlayout__tab {
+  pointer-events: auto;
+}
+
+.flexlayout__tab:has(.ImageView) {
+  pointer-events: none;
+}

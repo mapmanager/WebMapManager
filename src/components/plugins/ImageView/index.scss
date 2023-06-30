@@ -1,0 +1,198 @@
+.controls {
+  position: absolute;
+  z-index: 1400;
+  width: 100%;
+  height: 100%;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: row;
+  pointer-events: none;
+}
+
+.z-control {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  bottom: 6px;
+
+  height: calc(100% - 12px);
+  width: 15px;
+  border-radius: 3px;
+  background: rgba(48, 48, 48, 0.87);
+
+  .selection {
+    stroke: none;
+    fill: rgba(255, 255, 255, 0.4);
+    fill-opacity: 1;
+    rx: 4px;
+    shape-rendering: geometricPrecision;
+  }
+
+  .slide {
+    fill: rgba(74, 74, 74, 0.87);
+    rx: 2px;
+    shape-rendering: geometricPrecision;
+    transform: translateX(15%);
+    pointer-events: none;
+  }
+
+  .handle--n {
+    transform: translateY(0px);
+  }
+  .handle--s {
+    transform: translateY(0px);
+  }
+
+  .overlay {
+    cursor: default;
+  }
+}
+
+.contrast-controls {
+  display: flex;
+  flex-direction: column;
+
+  .selection {
+    stroke: none;
+    fill: none;
+  }
+
+  .overlay {
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .not-selected {
+    height: 100%;
+    fill: gray;
+    fill-opacity: 0.5;
+  }
+
+  .handle {
+    fill: white;
+  }
+
+  // Move the handles to the end of their range instead of the center.
+  .handle--e {
+    transform: translateX(-3px);
+  }
+  .handle--w {
+    transform: translateX(3px);
+  }
+
+  .contrast-path {
+    stroke-width: 1;
+  }
+
+  .contrast-control-container:last-of-type {
+    .contrast-control {
+      margin: 0px;
+    }
+    &::after {
+      bottom: 1px !important;
+    }
+  }
+  .contrast-control {
+    margin-bottom: 8px;
+    background: black;
+
+    border: 1px solid hsl(0, 0%, 23%);
+    display: block;
+    width: 100%;
+    height: 50px;
+  }
+
+  .contrast-control-container {
+    &.disabled {
+      .contrast-control {
+        * {
+          opacity: 0;
+        }
+      }
+
+      position: relative;
+      &::after {
+        cursor: not-allowed;
+        position: absolute;
+        top: 2px;
+        bottom: 9px;
+        left: 1px;
+        right: 25px;
+        content: "Disabled";
+        text-align: center;
+        line-height: 46px;
+        font-size: 13px;
+        font-weight: 600;
+        color: gray;
+      }
+    }
+  }
+
+  .visible {
+    padding-left: 4px;
+    width: 26px;
+    cursor: pointer;
+  }
+}
+
+.contrast-control-container {
+  display: flex;
+  align-items: center;
+}
+
+.rs-anim-collapse {
+  display: inherit !important;
+  overflow: hidden;
+  height: 0px;
+}
+
+
+.image-inspector-controls {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+
+  .spine-table {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    
+    .rs-panel-body {
+      flex-grow: 1;
+      min-height: 150px;
+      padding-top: 0px !important;
+      padding-bottom: 0px !important;
+    }
+
+    .rs-table-cell, .rs-table-hover .rs-table-row:hover .rs-table-cell, .rs-table-hover .rs-table-row:hover .rs-table-cell-group, .rs-table-row-expanded, .rs-table-row-header, .rs-table-row-header .rs-table-cell {
+      background-color: transparent !important;
+    }
+
+    .rs-table {
+      .spine {
+        cursor: pointer;
+        &.invisible {
+          opacity: 0.5;
+        }
+      }
+
+      .selected {
+        font-weight: bold;
+      }
+    }
+  }
+}
+
+.segment-not-found-c {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.sub-title {
+  padding-top: 16px;
+  padding-bottom: 12px;
+  font-size: 14px;
+}
