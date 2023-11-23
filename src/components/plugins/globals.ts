@@ -4,28 +4,28 @@ import { isAltKeyDown, isShiftKeyDown } from "../utils";
 /**
  * Global signal to track which segment is selected.
  */
-export const selectedSegment = signal<string | undefined>(undefined);
+export const SELECTED_SEGMENT = signal<string | undefined>(undefined);
 
 /**
  * Global signal to track which spine is selected.
  */
-export const selectedSpine = signal<string | undefined>(undefined);
+export const SELECTED_SPINE = signal<string | undefined>(undefined);
 
 /**
  * Global signal tracks which spines are selected as part of a filter.
  * Set of spine ids
  */
-export const filters = signal<Set<string> | undefined>(undefined);
+export const FILTERS = signal<Set<string> | undefined>(undefined);
 
 /**
  * Updates the filter merging them depending on the selected shortcut
  */
 export const setFilters = (selection: string[] | undefined) => {
   if (!selection) {
-    filters.value = undefined;
+    FILTERS.value = undefined;
     return;
   }
-  let f = filters.peek();
+  let f = FILTERS.peek();
   if (f) {
     if (isShiftKeyDown) {
       // addition
@@ -35,5 +35,5 @@ export const setFilters = (selection: string[] | undefined) => {
       selection = selection.filter((a) => f!.has(a));
     }
   }
-  filters.value = new Set(selection);
+  FILTERS.value = new Set(selection);
 };

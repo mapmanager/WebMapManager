@@ -1,21 +1,21 @@
 import React, { useMemo } from "react";
 import { Table } from "rsuite";
-import { filters, selectedSpine } from "../globals";
+import { FILTERS, SELECTED_SPINE } from "../globals";
 import { Signal } from "@preact/signals-react";
-import { LercPixelSource } from "../../../loaders/lerc";
+import { PixelSource } from "../../../loaders";
 import { ImageViewSelection } from ".";
 
 const { Column, HeaderCell, Cell } = Table;
 
 interface SpineTableProps {
-  loader: LercPixelSource;
+  loader: PixelSource;
   expandedRows: Signal<string[]>;
   selection: ImageViewSelection;
 }
 
 const spineRowSelected = (rowData: any) => {
   if (rowData.segment) return;
-  selectedSpine.value = rowData.id;
+  SELECTED_SPINE.value = rowData.id;
 };
 
 const SelectableCell = ({
@@ -52,17 +52,21 @@ export const SpineTable = ({
   selection,
   expandedRows,
 }: SpineTableProps) => {
-  const filter = filters.value;
+  const filter = FILTERS.value;
   const data = useMemo(() => {
     const segments = loader.getSegmentsAndSpines(selection, filter, true);
     return segments.map((seg) => ({
-      id: "Segment " + seg.segmentId,
+      id: "Segment " + seg.get("segmentID"),
       segment: true,
-      children: seg.spines,
+      children: seg.get("spines").map((d) => ({
+        id: d.get("id"),
+        type: d.get("type"),
+        invisible: d.get("invisible"),
+      })),
     }));
   }, [loader, selection, filter]);
 
-  const selectedSpineId = selectedSpine.value;
+  const selectedSpineId = SELECTED_SPINE.value;
 
   return (
     <Table

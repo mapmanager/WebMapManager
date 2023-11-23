@@ -231,7 +231,7 @@ export function ZScroll({
     return () => {
       window.removeEventListener("keydown", handler);
     };
-  }, [svgRef, height, length, selection, linked, roundSelection, isActive]);
+  }, [svgRef, height, length, selection, selection.value.z, linked, roundSelection, isActive]);
 
   if (!isActive) return <></>;
   

@@ -1,217 +1,148 @@
-import {
-  LineLayer,
-  PolygonLayer,
-  ScatterplotLayer,
-  TextLayer,
-} from "@deck.gl/layers/typed";
+import type { Feature, Geometry, GeoJsonProperties } from "geojson";
+import { GeoJsonLayer, PolygonLayer } from "@deck.gl/layers/typed";
+import { useEffect, useMemo, useState } from "react";
+import { FILTERS, SELECTED_SEGMENT, SELECTED_SPINE } from "../../globals";
+import { AnnotationsOptions } from "../../../../python";
+import { PickingInfo } from "@deck.gl/core/typed";
+import { Signal } from "@preact/signals-react";
 import { AnnotatedPixelSource } from "../../../../loaders/annotations";
-import { ImageViewSelection } from "..";
-import { useMemo } from "react";
-import { filters, selectedSegment, selectedSpine } from "../../globals";
 
-const LABEL_DISTANCE = 20;
-export const HIGHLIGHTED_COLOR = [254, 118, 7];
-
-export interface AnnotationsOptions {
+export interface AnnotationsProps extends AnnotationsOptions {
   id: string;
-  loader?: AnnotatedPixelSource;
-  selection: ImageViewSelection;
-
-  // View toggles
-  showLineSegments?: boolean;
-  showLabels?: boolean;
-  showAnchors?: boolean;
-  showSpines?: boolean;
+  loader: AnnotatedPixelSource;
+  visible: boolean;
 }
 
-const getPosition = ({ position }: any) => position;
-const defaultScatterProps: any = {
-  filled: true,
-  radiusScale: 2,
-  getPosition,
-  opacity: 1,
-  radiusMinPixels: 1,
-  radiusMaxPixels: 4,
-};
+const textSizeMinPixels = 10;
+const textSizeMaxPixels = 13;
+const AnnotationSelections = {
+  segmentID: SELECTED_SEGMENT,
+  spineID: SELECTED_SPINE,
+} as Record<string, Signal<string | undefined>>;
 
-function useSegmentLayer({
-  id,
-  loader,
-  selection,
-  showLineSegments,
-}: AnnotationsOptions): any {
-  const selected = selectedSegment.value;
-  return useMemo(() => {
-    if (!loader || !showLineSegments) return undefined;
-    return new ScatterplotLayer({
-      ...defaultScatterProps,
-      id: `line-segments-${id}`,
-      pickable: true,
-      data: loader.getLineSegments(selection),
-      getFillColor: ({ color, id }) =>
-        selected === id ? HIGHLIGHTED_COLOR : color,
-      onClick: ({ object: { id } }) => (selectedSegment.value = id),
-    });
-  }, [loader, selection, id, selected, showLineSegments]);
-}
+export function useAnnotations(options: AnnotationsProps): any[] {
+  const {
+    id,
+    loader,
+    showAnchors,
+    showLabels,
+    showLineSegments,
+    showLineSegmentsRadius,
+    showSpines,
+    selection,
+    visible,
+  } = options;
+  const filters = FILTERS.value;
+  const selectedSegment = SELECTED_SEGMENT.value;
+  const selectedSpine = SELECTED_SPINE.value;
 
-function useSpineTrace({ id, loader, selection }: AnnotationsOptions): any {
-  const selected = selectedSpine.value;
-  return useMemo(() => {
-    if (!loader) return [];
-    const spineTraces = loader.getSpineTraces(selection, selected);
-    if (!spineTraces) return undefined;
-
-    return new PolygonLayer({
-      id: `spine-traces-${id}`,
-      data: spineTraces!,
-      lineWidthUnits: "pixels",
-      pickable: false,
-      stroked: true,
-      filled: false,
-      lineWidthMinPixels: 1,
-      getPolygon: ({ polygon }) => polygon,
-      getLineColor: ({ strokeColor }) => strokeColor,
-    });
-  }, [loader, selection, id, selected]);
-}
-
-const setFilteredColor = (
-  src: [number, number, number, number],
-  filtered: boolean
-): [number, number, number, number] => {
-  if (filtered) {
-    src = [...src];
-    if (src.length < 4) src[3] = 255;
-    src[3] /= 2; // half the opacity
-  }
-  return src;
-};
-
-function useSpines(
-  spineData: any,
-  { id, showSpines }: AnnotationsOptions
-): any {
-  const selected = selectedSpine.value;
-  return useMemo(() => {
-    if (!spineData || !showSpines) return undefined;
-    const selectChanged = spineData.selectedSpine === selected;
-    spineData.selectedSpine = selected;
-
-    return new ScatterplotLayer({
-      ...defaultScatterProps,
-      id: `spines-${id}`,
-      data: spineData,
-      radiusMaxPixels: 7,
-      radiusMinPixels: 3,
-      radiusScale: 2,
-      pickable: true,
-      getFillColor: ({ color, id, filtered }) =>
-        setFilteredColor(selected === id ? HIGHLIGHTED_COLOR : color, filtered),
-      getRadius: ({ id }) => (selected === id ? 4 : 1),
-      onClick: ({ object: { id } }) => {
-        selectedSpine.value = id;
+  const layers = useMemo(() => {
+    if (!visible) return [];
+    const datasets = loader.getAnnotationsGeoJson({
+      showAnchors,
+      showLabels,
+      showLineSegments,
+      showLineSegmentsRadius,
+      showSpines,
+      filters,
+      annotationSelections: {
+        segmentID: selectedSegment,
+        spineID: selectedSpine,
       },
-      dataComparator: (oldData, newData) =>
-        selectChanged && oldData === newData,
-
-      // getTooltip is forwarded to any layer, allowing the layer to override it
-      getTooltip: (spine: any) =>
-        spine.note
-          ? {
-              html: `<b>Note</b><div style="padding-top:4px;">${spine.note}</div>`,
-              style: {
-                backgroundColor: "rgb(238 235 61)",
-                color: "black",
-                borderRadius: "12px",
-                padding: "8px",
-                fontSize: "0.8em",
-              },
-            }
-          : undefined,
+      selection,
     });
-  }, [id, spineData, selected, showSpines]);
-}
-
-function useSpineUtils({
-  loader,
-  id,
-  selection,
-  showLabels,
-  showAnchors,
-}: AnnotationsOptions): any {
-  const filter = filters.value;
-  return useMemo(() => {
-    if (!loader) return [];
-    const spineData = loader.getSpines(selection, filter);
-    if (!spineData) return [];
-
-    const sizeMinPixels = 10;
-    const sizeMaxPixels = 13;
 
     return [
-      spineData,
-      showAnchors &&
-        new LineLayer({
-          id: `anchors-${id}`,
-          data: spineData,
-          widthMinPixels: 0.5,
-          widthMaxPixels: 2,
-          getWidth: 50,
-          getSourcePosition: ({ position }) => position,
-          getTargetPosition: ({ anchor }) => anchor,
-          getColor: ({ anchorColor, filtered }) =>
-            setFilteredColor(anchorColor, filtered),
-        }),
-      showAnchors &&
-        new ScatterplotLayer({
-          id: `anchors-point-${id}`,
-          data: spineData,
-          opacity: 1,
-          radiusMinPixels: 4,
-          radiusMaxPixels: 4,
-          radiusUnits: "pixels",
-          filled: false,
-          stroked: true,
-          getPosition: ({ anchor }) => anchor,
-          getLineWidth: 1.5,
-          lineWidthScale: 1,
+      ...datasets.map((d, i) => {
+        const data = JSON.parse(d);
+        const selectOn = data.properties?.selectOn;
+        const editOn = data.properties?.editOn;
+        const editId = data.properties?.editId ?? "null";
+        const editing = editId && data.properties?.edit;
+        const translating =
+          editing && editing.some((x: string) => x === "translate");
+        const pickable =
+          selectOn !== undefined || editOn !== undefined || translating;
+
+        return new GeoJsonLayer({
+          id: `-#${id}#-annotations-${i}`,
+          data,
+          pointType: "circle+text",
           lineWidthUnits: "pixels",
-          getLineColor: ({ anchorColor, filtered }) =>
-            setFilteredColor(anchorColor, filtered),
-          radiusScale: 1,
-        }),
-      showLabels &&
-        new TextLayer({
-          id: `spines-labels-${id}`,
-          data: spineData,
-          fontWeight: 700,
-          getText: ({ id }) => id,
-          getPosition,
-          getPixelOffset: ({ position, anchor }: any) => [
-            0,
-            Math.sign(position[1] - anchor[1]) * LABEL_DISTANCE,
-          ],
-          getColor: ({ textColor, filtered }) =>
-            setFilteredColor(textColor, filtered),
-          sizeMaxPixels,
-          sizeMinPixels,
-        }),
+          lineWidthMinPixels: 1,
+          lineWidthScale: translating ? 4 : 2,
+          pointRadiusUnits: "pixels",
+          pointRadiusMinPixels: 3,
+          pointRadiusMaxPixels: 7,
+          pointRadiusScale: translating ? 4 : 2,
+          pickable,
+          onClick: (pickingInfo: PickingInfo, event: any) => {
+            const properties = pickingInfo.object?.properties;
+            const key = 2 === event.tapCount ? editOn : selectOn;
+            if (!key) return;
+            const selection = properties[key];
+            if (!selection) return;
+            const selector = AnnotationSelections[key];
+            if (!selector) return;
+            selector.value = properties[key];
+          },
+          getFillColor: (x: Feature<Geometry, GeoJsonProperties>) =>
+            setOpacity(x.properties?.fill, x) || [0, 0, 0, 0],
+          getLineColor: (x: Feature<Geometry, GeoJsonProperties>) =>
+            setOpacity(x.properties?.stroke, x) || [0, 0, 0, 0],
+          getLineWidth: (x: Feature<Geometry, GeoJsonProperties>) =>
+            x.properties?.strokeWidth || 1,
+          lineCapRounded: true,
+          getPointRadius: (x: Feature<Geometry, GeoJsonProperties>) =>
+            x.properties?.radius || 1,
+          lineJointRounded: true,
+          textFontWeight: 700,
+          getTextColor: (x: Feature<Geometry, GeoJsonProperties>) =>
+            setOpacity(x.properties?.textColor, x) || [0, 0, 0, 0],
+          getTextPixelOffset: (x: Feature<Geometry, GeoJsonProperties>) =>
+            x.properties?.textOffset || [0, 0],
+          textSizeMaxPixels,
+          textSizeMinPixels,
+          getTooltip: (x: Feature<Geometry, GeoJsonProperties>) =>
+            x.properties?.note
+              ? {
+                  html: `<b>Note</b><div style="padding-top:4px;">${x.properties?.note}</div>`,
+                  style: {
+                    backgroundColor: "rgb(238 235 61)",
+                    color: "black",
+                    borderRadius: "12px",
+                    padding: "8px",
+                    fontSize: "0.8em",
+                  },
+                }
+              : undefined,
+        });
+      }),
     ];
-  }, [loader, selection, id, showLabels, showAnchors, filter]);
+  }, [
+    id,
+    loader,
+    selection,
+    showAnchors,
+    showLabels,
+    showLineSegments,
+    showLineSegmentsRadius,
+    showSpines,
+    filters,
+    selectedSegment,
+    selectedSpine,
+    visible,
+  ]);
+
+  return layers as any;
 }
 
-export function useAnnotations(options: AnnotationsOptions): any[] {
-  const segmentLayer = useSegmentLayer(options);
-  const [spineData, anchorLayer, anchorLayerDock, labelLayer] =
-    useSpineUtils(options);
-
-  return [
-    anchorLayer,
-    segmentLayer,
-    anchorLayerDock,
-    useSpineTrace(options),
-    useSpines(spineData, options),
-    labelLayer,
-  ];
+function setOpacity(
+  color: number[] | undefined,
+  x: Feature<Geometry, GeoJsonProperties>
+): [number, number, number, number] | undefined {
+  if (!color) return undefined;
+  const opacity = x.properties?.opacity;
+  if (opacity) color[3] = opacity;
+  return color as any;
 }

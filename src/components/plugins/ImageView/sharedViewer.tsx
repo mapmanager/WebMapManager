@@ -10,7 +10,7 @@ import {
 import { useEffect, useMemo } from "react";
 import { ViewSelection } from "../../../loaders/annotations";
 import { signal, useComputed, useSignal } from "@preact/signals-react";
-import { LercPixelSource } from "../../../loaders/lerc";
+import { PixelSource } from "../../../loaders";
 
 const MAX_ZOOM = 4;
 const MIN_ZOOM = -2;
@@ -88,7 +88,7 @@ export const ImageViewerRoot = ({
   loader,
   children,
 }: {
-  loader: LercPixelSource;
+  loader: PixelSource;
   children: any[];
 }) => {
   const viewStates = useSignal<any>({});
@@ -227,7 +227,8 @@ export const ImageViewerRoot = ({
           layers,
           getTooltip,
         }}
-        onViewStateChange={({ viewState, viewId }: any) => {
+        onViewStateChange={(args: any) => {
+          const { viewState, viewId } = args;
           const state = viewStates.peek();
           const priorState = state[viewId];
 

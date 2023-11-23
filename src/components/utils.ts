@@ -1,8 +1,13 @@
 import { useAsync } from "react-use";
-import { LercPixelSource } from "../loaders/lerc";
 import { AnnotatedPixelSource, ViewSelection } from "../loaders/annotations";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
-import { setFilters } from "./plugins/globals";
+import {
+  SELECTED_SEGMENT,
+  SELECTED_SPINE,
+  setFilters,
+} from "./plugins/globals";
+import { PyPixelSource } from "../loaders/py_loader";
+import { pyImageSource } from "../python";
 
 export type ImageSource = string;
 
@@ -17,11 +22,18 @@ window.addEventListener(
   (event) => {
     isAltKeyDown = event.altKey;
     isShiftKeyDown = event.shiftKey;
-    if (event.key === "Escape") setFilters(undefined);
+    if (event.key === "Escape") {
+      if (SELECTED_SEGMENT.peek() && SELECTED_SPINE.peek()) {
+        SELECTED_SPINE.value = undefined;
+        return;
+      }
+      SELECTED_SPINE.value = undefined;
+      SELECTED_SEGMENT.value = undefined;
+      setFilters(undefined);
+    }
   },
   { passive: true }
 );
-
 
 /**
  * An event listener to keep track of shortcuts
@@ -76,7 +88,7 @@ export function useLinkedSignal<T>(
  * @param src the image source
  */
 export function useImageLoader(src: ImageSource): {
-  loader?: LercPixelSource;
+  loader?: PyPixelSource;
   error?: Error;
   loading: boolean;
 } {
@@ -84,7 +96,7 @@ export function useImageLoader(src: ImageSource): {
     value: loader,
     error,
     loading,
-  } = useAsync(async () => await LercPixelSource.Load(src as any), [src]);
+  } = useAsync(async () => await PyPixelSource.Load(src as any), [src]);
   if (!loader) return { error, loading };
   return { loader, error, loading };
 }
@@ -121,18 +133,27 @@ export function useRasters(
   return { rasters, error, loading };
 }
 
-// An optimized version of d3 extent for typed arrays
-export const typedExtent = (
-  slice: number[] | Uint16Array
-): [min: number, max: number] => {
-  let len = slice.length - 1;
-  let min = slice[len];
-  let max = min;
-  for (; len--; ) {
-    const data = slice[len];
-    if (data < min) min = data;
-    if (data > max) max = data;
-  }
+export function useRasterSources(
+  loader: AnnotatedPixelSource | undefined,
+  selections: ViewSelection[]
+): {
+  sources?: (pyImageSource | undefined)[];
+  error?: Error;
+  loading: boolean;
+} {
+  const {
+    value: sources,
+    error,
+    loading,
+  } = useAsync(async () => {
+    if (!loader) return [];
+    const futures = selections.map((selection) => {
+      if (!selection.visible) return Promise.resolve(undefined);
+      return loader.source(selection);
+    });
 
-  return [min, max];
-};
+    return await Promise.all(futures);
+  }, [loader, selections]);
+
+  return { sources, error, loading };
+}

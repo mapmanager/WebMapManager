@@ -4,7 +4,7 @@ import { Panel, PanelGroup, SelectPicker, Slider } from "rsuite";
 import Plot from "react-plotly.js";
 import { useEffect, useMemo, useState } from "react";
 import { Data, PlotMouseEvent, ScatterData } from "plotly.js";
-import { filters, selectedSpine, setFilters } from "./globals";
+import { FILTERS, SELECTED_SPINE, setFilters } from "./globals";
 import { VisibilityControl } from "../Visibility";
 import { extent, scaleLinear, scaleOrdinal, schemeCategory10 } from "d3";
 
@@ -16,7 +16,7 @@ const styles = {
 
 const updateSelected = (event: Readonly<PlotMouseEvent>) => {
   for (const point of event.points) {
-    selectedSpine.value = point.text;
+    SELECTED_SPINE.value = point.text;
     return;
   }
 };
@@ -46,7 +46,7 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
   const [revision, setRevision] = useState(0);
   const [showLabels, setShowLabels] = useState(false);
   const [scale, setScale] = useState(7);
-  const filter = filters.value;
+  const filter = FILTERS.value;
 
   const stats = useMemo(
     () => loader.getSpineStats([xAxis, yAxis, zAxis, scaleOn]),
@@ -87,7 +87,7 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
     mode: ((showLabels ? "text+" : "") + "markers") as any,
     type: is3d ? "scatter" : "scatter3d",
   } as ScatterData;
-  const globalSelection = selectedSpine.value;
+  const globalSelection = SELECTED_SPINE.value;
 
   const hovertemplate = `<b>Spine Id - %{text}</b><br><b>${xAxis}</b> %{x}<br><b>${yAxis}</b> %{y}<br>${
     zAxis ? `<b>${zAxis}</b> %{z}<br>` : ""

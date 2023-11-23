@@ -29,6 +29,7 @@ const addNew = (
 interface Props {
   node: FlexLayout.TabSetNode | FlexLayout.BorderNode;
 }
+
 /**
  * Renders the add tab button
  */
