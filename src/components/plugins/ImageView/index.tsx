@@ -4,7 +4,7 @@ import "./index.scss";
 import { ZScroll } from "./z";
 import { PanelGroup, Panel, Checkbox } from "rsuite";
 import { Inspector } from "../../layout";
-import { selectedSpine } from "../globals";
+import { SELECTED_SPINE } from "../globals";
 import { ImageViewer } from "./sharedViewer";
 import { PluginProps } from "..";
 import {
@@ -15,7 +15,7 @@ import {
   batch,
 } from "@preact/signals-react";
 import { useAnnotations } from "./layers";
-import { isAltKeyDown, useLinkedSignal } from "../../utils";
+import { isAltKeyDown, useLinkedSignal, useRasterSources } from "../../utils";
 import { VisibilityControl } from "../../Visibility";
 import { SpineTable } from "./table";
 import { COLORS_SELECTOR_OPTIONS } from "./colorPicker";
@@ -55,6 +55,7 @@ export function ImageView({
   const showSpines = useSignal(true);
   const showAnchors = useSignal(true);
   const showLabels = useSignal(true);
+  const showLineSegmentsRadius = useSignal(true);
   const target = useSignal<[number, number] | undefined>(undefined);
   const colors = useLinkedSignal<Color[]>(DEFAULT_COLOR, globalColor, linked);
   // Store expanded rows in the in the image view so that the state is maintained even if the inspector is not shown
@@ -64,7 +65,6 @@ export function ImageView({
     globalContrastLimits,
     linked
   );
-
   const channelsVisible = useLinkedSignal<[boolean, boolean]>(
     [true, true],
     globalChannelsVisible,
@@ -83,11 +83,12 @@ export function ImageView({
       visible,
     }))
   );
+  const { sources, error } = useRasterSources(loader, selections.value);
 
   // Snap on new selection if forced
   useEffect(() => {
     if (!linked.value && !isActive) return;
-    return selectedSpine.subscribe((spineId) => {
+    return SELECTED_SPINE.subscribe((spineId) => {
       if (!isAltKeyDown || !spineId) return;
 
       let {
@@ -95,10 +96,10 @@ export function ImageView({
         z: [low, high],
       } = selection.peek();
 
-      const spine = loader.getSpine({ t }, spineId);
+      const spine = loader.getSpinePosition(t, spineId);
       if (!spine) return;
 
-      const [x, y, newZ] = spine.position;
+      const [x, y, newZ] = spine;
       batch(() => {
         target.value = [x, y];
 
@@ -120,16 +121,20 @@ export function ImageView({
   }, [loader, selection, isActive, linked.value, target]);
 
   const annotationLayers = useAnnotations({
-    id: `-#${id}#-annotations`,
-    loader: visible ? loader : undefined,
-    selection: selection.value,
+    id,
+    loader,
     showLineSegments: showLineSegments.value,
     showAnchors: showAnchors.value,
     showLabels: showLabels.value,
     showSpines: showSpines.value,
+    selection: selection.value,
+    showLineSegmentsRadius: showLineSegmentsRadius.value,
+    annotationSelections: {},
+    visible,
   });
 
   if (!visible) return <></>;
+  if (error) return <h1>{error.message}</h1>;
 
   return (
     <>
@@ -161,7 +166,7 @@ export function ImageView({
 
                 <div className="sub-title">Contrast</div>
                 <ContrastControls
-                  loader={loader}
+                  sources={sources!}
                   selections={selections.value}
                   colors={colors}
                   contrastLimits={contrastLimits}
@@ -173,6 +178,14 @@ export function ImageView({
                   onChange={(visible) => (showLineSegments.value = visible)}
                 >
                   Line Segments
+                </VisibilityControl>
+                <VisibilityControl
+                  visible={showLineSegmentsRadius.value}
+                  onChange={(visible) =>
+                    (showLineSegmentsRadius.value = visible)
+                  }
+                >
+                  Line Segments Bounds
                 </VisibilityControl>
                 <VisibilityControl
                   visible={showSpines.value}

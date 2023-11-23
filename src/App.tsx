@@ -6,7 +6,7 @@ import Layout from "./components/layout";
 import { CustomProvider } from "rsuite";
 
 function App() {
-  const { loader, loading, error } = useImageLoader("/api/data/rr30a_s0/");
+  const { loader, loading, error } = useImageLoader("/api/data/rr30a_s0u/");
   if (loading) return <h1>loading</h1>;
   if (error) return <h1>{error.message}</h1>;
   return (

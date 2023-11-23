@@ -8,6 +8,11 @@ import { Metadata, Point2d, Polygon2d, Spine } from "./metadata";
 import type { PixelSource } from "@vivjs/types/src/index";
 import { Color } from "@deck.gl/core/typed";
 import { ImageViewSelection } from "../components/plugins/ImageView";
+import {
+  AnnotationsOptions,
+  SegmentsAndSpinesResult,
+  pyImageSource,
+} from "../python";
 
 export interface ViewSelection {
   c: number;
@@ -39,7 +44,7 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
   spineStats: string[];
   meta?: PixelSourceMeta;
 
-  constructor(metadata: Metadata) {
+  constructor(metadata: Metadata, spineStats: string[]) {
     const { t = 1, c = 1, z = 1, x, y } = metadata.size ?? {};
     this.shape = [t, c, z, y, x];
 
@@ -66,21 +71,7 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
     this.tileSize = x;
     this.metadata = metadata;
     this.meta = meta;
-
-    const defaultStatNames = ["x", "y", "t", "z"];
-    if (this.metadata) {
-      outer: for (const anno of Object.values(this.metadata.annotations)) {
-        for (const spine of Object.values(anno.spines)) {
-          defaultStatNames.push(
-            ...Object.keys(spine.stats).filter(
-              (key) => (spine.stats[key] as any) !== ""
-            )
-          );
-          break outer;
-        }
-      }
-    }
-    this.spineStats = defaultStatNames.sort();
+    this.spineStats = spineStats;
   }
 
   public get z(): number {
@@ -91,6 +82,9 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
   abstract getRaster(sel: RasterSelection): Promise<PixelData>;
   // @ts-ignore: Selection should be converted to src type prior to calling super.
   abstract getTile(sel: RasterSelection): Promise<PixelData>;
+
+  abstract getAnnotationsGeoJson(options?: AnnotationsOptions): string[];
+  abstract source(selection: ViewSelection): Promise<pyImageSource | undefined>;
 
   static selectedZRange(selection: ViewSelection): [low: number, high: number] {
     const z = (selection as any).z;
@@ -125,6 +119,11 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
 
     return result;
   }
+
+  public abstract getSpinePosition(
+    t: number,
+    spineId: string
+  ): [x: number, y: number, z: number] | undefined;
 
   public getSpine(
     selection: { t: number; z?: [number, number] },
@@ -196,90 +195,20 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
     return result;
   }
 
-  public getSegmentsAndSpines(
-    { t, z: [low, high] }: ImageViewSelection,
-    filter?: Set<string> | undefined,
-    showAll: boolean = false
-  ): {
-    segmentId: string;
-    spines: {
-      id: string;
-      type: "Start" | "End" | "";
-      invisible: boolean;
-    }[];
-  }[] {
-    const annotations = this.metadata.annotations[t];
-
-    const results: any = {};
-    for (const [id, spine] of Object.entries(annotations.spines)) {
-      const [, , z] = spine.position;
-      const invisible = z < low || z > high;
-      if (!showAll) if (invisible) continue;
-
-      let result = results[spine.segmentID];
-      if (!result) {
-        result = {
-          segmentId: spine.segmentID,
-          spines: [],
-        };
-        results[spine.segmentID] = result;
-      }
-
-      result.spines.push({
-        id,
-        type: "Start",
-        invisible: invisible || (filter && !filter.has(id)),
-      });
-    }
-
-    return Object.values(results).sort((a: any, b: any) =>
-      a.segmentId.localeCompare(b.segmentId)
-    ) as any;
-  }
+  public abstract getSegmentsAndSpines(
+    {
+      t,
+      z: [low, high],
+    }: ImageViewSelection,
+    filters?: Set<string> | undefined,
+    showAll?: boolean
+  ): SegmentsAndSpinesResult;
 
   public get scalerDimensions(): string[] {
     return this.spineStats;
   }
 
-  public getSpineStats(
+  public abstract getSpineStats(
     statNames?: (string | null)[]
-  ): Record<string, number | string>[] {
-    const stats = [];
-    for (const [timeStr, anno] of Object.entries(this.metadata.annotations)) {
-      const time = Number(timeStr);
-      for (const [id, spine] of Object.entries(anno.spines)) {
-        let statO: any;
-        if (statNames) {
-          statO = {
-            id,
-            segmentID: spine.segmentID,
-          };
-          for (const statName of statNames) {
-            if (!statName) continue;
-            let stat = spine.stats[statName];
-            if (stat === undefined) {
-              if (statName === "x") {
-                stat = spine.position[0];
-              } else if (statName === "y") {
-                stat = spine.position[1];
-              } else if (statName === "z") {
-                stat = spine.position[2];
-              } else if (statName === "t") {
-                stat = time;
-              }
-            }
-
-            statO[statName] = stat;
-          }
-        } else {
-          statO = {
-            id,
-            ...spine.stats,
-          };
-        }
-        stats.push(statO);
-      }
-    }
-    return stats;
-  }
+  ): Record<string, number | string>[];
 }

@@ -7,14 +7,14 @@
  * component. The provided title will be used as the default tab name.
  */
 
-import { LercPixelSource } from "../../loaders/lerc";
+import { PixelSource } from "../../loaders/";
 
 /**
  * The Props available to all plugins
  */
 export interface PluginProps {
   // The image loader
-  loader: LercPixelSource;
+  loader: PixelSource;
   // The id of the tab
   id: string;
   // The width of the tab's view
