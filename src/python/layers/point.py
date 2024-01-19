@@ -3,7 +3,7 @@ from layers.layer import Layer
 from layers.utils import getCoords, inRange, dropZ
 from layers.line import LineLayer
 import geopandas as gp
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 
 class PointLayer(Layer):
@@ -43,6 +43,6 @@ class PointLayer(Layer):
 
 def tail(self):
     points = PointLayer(self)
-    points.series = points.series.apply(lambda x: x.coords[1])
+    points.series = points.series.apply(lambda x: Point(x.coords[-1]))
     return points
 LineLayer.tail = tail

@@ -83,7 +83,6 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
   // @ts-ignore: Selection should be converted to src type prior to calling super.
   abstract getTile(sel: RasterSelection): Promise<PixelData>;
 
-  abstract getAnnotationsGeoJson(options?: AnnotationsOptions): string[];
   abstract source(selection: ViewSelection): Promise<pyImageSource | undefined>;
 
   static selectedZRange(selection: ViewSelection): [low: number, high: number] {

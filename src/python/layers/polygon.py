@@ -14,7 +14,7 @@ class PolygonLayer(Layer):
 
         return {"polygons": {
             "ids": featureId,
-            "featureIds": polygonIndices.index.to_numpy(dtype=np.uint16),
-            "polygonIndices": np.insert(coords.index.to_numpy(dtype=np.uint16), 0, 0, axis=0),
+            "featureIds": coords.index.to_numpy(dtype=np.uint16),
+            "polygonIndices": np.insert(polygonIndices.to_numpy(dtype=np.uint16), 0, 0, axis=0),
             "positions": coords.explode().to_numpy(dtype=np.float32),
         }}

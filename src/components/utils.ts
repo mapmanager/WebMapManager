@@ -1,12 +1,12 @@
 import { useAsync } from "react-use";
-import { AnnotatedPixelSource, ViewSelection } from "../loaders/annotations";
+import { ViewSelection } from "../loaders/annotations";
+import { PyPixelSource } from "../loaders/py_loader";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
 import {
   SELECTED_SEGMENT,
   SELECTED_SPINE,
   setFilters,
 } from "./plugins/globals";
-import { PyPixelSource } from "../loaders/py_loader";
 import { pyImageSource } from "../python";
 
 export type ImageSource = string;
@@ -108,7 +108,7 @@ export function useImageLoader(src: ImageSource): {
  * @returns the set of selected rasters
  */
 export function useRasters(
-  loader: AnnotatedPixelSource | undefined,
+  loader: PyPixelSource | undefined,
   selections: ViewSelection[]
 ): {
   rasters?: any[];
@@ -134,7 +134,7 @@ export function useRasters(
 }
 
 export function useRasterSources(
-  loader: AnnotatedPixelSource | undefined,
+  loader: PyPixelSource | undefined,
   selections: ViewSelection[]
 ): {
   sources?: (pyImageSource | undefined)[];
