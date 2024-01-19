@@ -1,8 +1,7 @@
-import { ImageViewSelection } from "../components/plugins/ImageView";
+import { PyProxy } from "pyodide/ffi";
+import { ImageViewSelection } from "./components/plugins/ImageView";
 // @ts-ignore
-import mainPy from "./main.py";
-// @ts-ignore
-import requirements from "./requirements.json";
+import requirements from "./python/requirements.json";
 
 // Load python
 globalThis.py = await window.loadPyodide({}).then(async (py) => {
@@ -15,7 +14,31 @@ globalThis.py = await window.loadPyodide({}).then(async (py) => {
     const micropip = py.pyimport("micropip");
     await micropip.install(requirements.micropip);
   }
+
+  // preloads all python files in the py dir to pyodide.
+  const r = (require as any).context("./python", true, /\.py$/);
+  for (const key of r.keys()) {
+    const content = r(key);
+    const path = key.slice(2) as string;
+
+    const parent = parentDir(path);
+    if (parent.length) {
+      try {
+        py.FS.mkdir(parent);
+      } catch (_) {}
+    }
+
+    py.FS.writeFile(key.slice(2), content, {
+      encoding: "utf8",
+    });
+    console.log("loaded python file: " + key);
+  }
+
   return py;
+
+  function parentDir(path: string) {
+    return path.split("/").slice(0, -1).join("/");
+  }
 });
 
 export interface AnnotationsOptions {
@@ -53,7 +76,18 @@ export interface pyPixelSource {
     zLow: number,
     zHigh: number
   ): Promise<pyImageSource>;
-  getAnnotationsGeoJson(options?: AnnotationsOptions): string[];
+  getAnnotationsGeoJson(options?: AnnotationsOptions): PyProxy[];
+
+  deleteSpine(spineId: string): void;
+  translate(
+    editId: string,
+    geometry: object,
+    x: number,
+    y: number,
+    finished: boolean
+  ): boolean;
+
+  addSpine(segmentId: string, x: number, y: number, z: number): string | undefined;
 
   getSegmentsAndSpines(options: {
     selection: ImageViewSelection;
@@ -66,8 +100,9 @@ export interface pyPixelSource {
   }): [x: number, y: number, z: number] | undefined;
 }
 
-const newPixelSource = (await py.runPythonAsync(mainPy)) as (
-  srcPath: string
-) => Promise<pyPixelSource>;
+const newPixelSource = (await py.runPythonAsync(`
+from main import newPixelSource
+newPixelSource
+`)) as (srcPath: string) => Promise<pyPixelSource>;
 
 export { newPixelSource };

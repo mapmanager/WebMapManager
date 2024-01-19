@@ -14,6 +14,7 @@ import {
 } from "../python";
 import { SIGNAL_ABORTED } from "@hms-dbmi/viv";
 import { ImageViewSelection } from "../components/plugins/ImageView";
+import type { PyProxy } from "pyodide/ffi"
 
 export class PyPixelSource extends AnnotatedPixelSource {
   #proxy: pyPixelSource;
@@ -92,7 +93,7 @@ export class PyPixelSource extends AnnotatedPixelSource {
     return this.#empty;
   }
 
-  getAnnotationsGeoJson(options?: AnnotationsOptions): string[] {
+  getAnnotations(options?: AnnotationsOptions): PyProxy[] {
     return this.#proxy.getAnnotationsGeoJson(options);
   }
 
@@ -118,6 +119,23 @@ export class PyPixelSource extends AnnotatedPixelSource {
     });
   }
 
+  public translate(
+    editId: string,
+    geometry: object,
+    x: number,
+    y: number,
+    finished: boolean
+  ): boolean {
+    return this.#proxy.translate(editId, geometry, x, y, finished);
+  }
+
+  public addSpine(segmentId: string, x: number, y: number, z: number): string | undefined {
+    return this.#proxy.addSpine(segmentId, x, y, z);
+  }
+
+  public deleteSpine(spineId: string) {
+    this.#proxy.deleteSpine(spineId);
+  }
 
   public getSpineStats(
     statNames?: (string | null)[] | undefined

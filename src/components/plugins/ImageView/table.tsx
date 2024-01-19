@@ -21,7 +21,7 @@ const spineRowSelected = (rowData: any) => {
 const SelectableCell = ({
   selectedSpineId,
   ...props
-}: import("rsuite-table/lib/Cell").InnerCellProps & {
+}: any & {
   selectedSpineId?: string;
 }) => {
   const isSpine = !props.rowData.segment;
