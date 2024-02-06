@@ -1,6 +1,6 @@
 import numpy as np
-from layers.layer import Layer
-from layers.utils import getCoords
+from .layer import Layer
+from .utils import getCoords
 
 
 class PolygonLayer(Layer):

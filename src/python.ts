@@ -1,7 +1,7 @@
 import { PyProxy } from "pyodide/ffi";
 import { ImageViewSelection } from "./components/plugins/ImageView";
 // @ts-ignore
-import requirements from "./python/requirements.json";
+import requirements from "./coreMapManager/requirements.json";
 
 // Load python
 globalThis.py = await window.loadPyodide({}).then(async (py) => {
@@ -16,28 +16,30 @@ globalThis.py = await window.loadPyodide({}).then(async (py) => {
   }
 
   // preloads all python files in the py dir to pyodide.
-  const r = (require as any).context("./python", true, /\.py$/);
+  const r = (require as any).context("./coreMapManager", true, /\.py$/);
   for (const key of r.keys()) {
     const content = r(key);
-    const path = key.slice(2) as string;
+    const path = "./coreMapManager" + key.slice(1) as string;
+    createAllParentDirs(path);
 
-    const parent = parentDir(path);
-    if (parent.length) {
-      try {
-        py.FS.mkdir(parent);
-      } catch (_) {}
-    }
-
-    py.FS.writeFile(key.slice(2), content, {
+    py.FS.writeFile(path, content, {
       encoding: "utf8",
     });
-    console.log("loaded python file: " + key);
   }
 
   return py;
 
-  function parentDir(path: string) {
-    return path.split("/").slice(0, -1).join("/");
+  function createAllParentDirs(path: string) {
+    const dirs = path.split("/");
+    dirs.pop();
+    let current = "";
+    for (const dir of dirs) {
+      current += dir;
+      try {
+        py.FS.mkdir(current);
+      } catch (_) {}
+      current += "/";
+    }
   }
 });
 
@@ -64,45 +66,44 @@ export type SegmentsAndSpinesResult = {
 }[];
 
 export interface pyImageSource {
-  data(): Uint16Array;
+  data(): { toJs: () => Uint16Array };
   extent(): [number, number];
   bins(nBin?: number): [counts: number, means: number][];
 }
 
 export interface pyPixelSource {
-  slices(
+  slices_js(
     time: number,
     channel: number,
-    zLow: number,
-    zHigh: number
+    zRange: [number, number]
   ): Promise<pyImageSource>;
-  getAnnotationsGeoJson(options?: AnnotationsOptions): PyProxy[];
+  getAnnotations_js(options?: AnnotationsOptions): PyProxy[];
 
   deleteSpine(spineId: string): void;
-  translate(
-    editId: string,
-    geometry: object,
+  addSpine(
+    segmentId: string,
     x: number,
     y: number,
-    finished: boolean
-  ): boolean;
-
-  addSpine(segmentId: string, x: number, y: number, z: number): string | undefined;
+    z: number
+  ): string | undefined;
 
   getSegmentsAndSpines(options: {
     selection: ImageViewSelection;
     filters?: Set<string> | undefined;
     showAll?: boolean;
   }): SegmentsAndSpinesResult;
-  getSpinePosition(options: {
-    t: number;
-    spineID: string;
-  }): [x: number, y: number, z: number] | undefined;
+  getSpinePosition(
+    t: number,
+    spineID: string
+  ): [x: number, y: number, z: number] | undefined;
+
+  undo(): void;
+  redo(): void;
 }
 
 const newPixelSource = (await py.runPythonAsync(`
-from main import newPixelSource
-newPixelSource
+from coreMapManager.pyodide_main import createAnnotations
+createAnnotations
 `)) as (srcPath: string) => Promise<pyPixelSource>;
 
 export { newPixelSource };

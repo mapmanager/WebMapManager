@@ -18,6 +18,16 @@ export const SELECTED_SPINE = signal<string | undefined>(undefined);
 export const FILTERS = signal<Set<string> | undefined>(undefined);
 
 /**
+ * Global signal tracks which spines are selected as part of a filter.
+ * Set of spine ids
+ */
+export const DATA_VERSION = signal<number>(0);
+
+export const dataChanged = () => {
+  DATA_VERSION.value = DATA_VERSION.peek() + 1;
+};
+
+/**
  * Updates the filter merging them depending on the selected shortcut
  */
 export const setFilters = (selection: string[] | undefined) => {

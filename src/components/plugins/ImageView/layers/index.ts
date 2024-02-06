@@ -7,8 +7,14 @@ import {
   BinaryPointFeatures,
   BinaryPolygonFeatures,
 } from "@loaders.gl/schema";
-import { useEffect, useMemo, useState } from "react";
-import { FILTERS, SELECTED_SEGMENT, SELECTED_SPINE } from "../../globals";
+import { useEffect, useMemo } from "react";
+import {
+  DATA_VERSION,
+  FILTERS,
+  SELECTED_SEGMENT,
+  SELECTED_SPINE,
+  dataChanged,
+} from "../../globals";
 import { AnnotationsOptions } from "../../../../python";
 import { PickingInfo } from "@deck.gl/core/typed";
 import { Signal } from "@preact/signals-react";
@@ -31,12 +37,12 @@ const AnnotationSelections = {
 } as Record<string, Signal<string | undefined>>;
 
 let dragging: string | undefined = undefined;
-let pendingDragStart: number[] | undefined = undefined;
+let firstTranslate: boolean = true;
 
 const INTERACTIONS = ["select", "edit"];
 
 export function useAnnotations(options: AnnotationsProps): any[] {
-  const [pendingEditVersion, setPendingEditVersion] = useState(0);
+  const pendingEditVersion = DATA_VERSION.value;
 
   const {
     id,
@@ -61,7 +67,7 @@ export function useAnnotations(options: AnnotationsProps): any[] {
         if (!spine) return;
         loader.deleteSpine(spine);
         SELECTED_SPINE.value = undefined;
-        setPendingEditVersion((x) => x + 1);
+        dataChanged(); // TODO: Localize update
       }
     };
     window.addEventListener("keydown", onKeyDown, { passive: true });
@@ -70,7 +76,7 @@ export function useAnnotations(options: AnnotationsProps): any[] {
 
   const layers = useMemo(() => {
     if (!visible) return [];
-    // console.time("getAnnotationsGeoJson");
+    // console.time("getAnnotations_js");
     const annotationSelections = {
       segmentID: selectedSegment,
       spineID: selectedSpine,
@@ -87,7 +93,7 @@ export function useAnnotations(options: AnnotationsProps): any[] {
       selection,
     });
 
-    // console.timeEnd("getAnnotationsGeoJson");
+    // console.timeEnd("getAnnotations_js");
     const layers = [];
     layers.push(
       new PolygonLayer({
@@ -110,7 +116,7 @@ export function useAnnotations(options: AnnotationsProps): any[] {
           const z = (selection.z[1] + selection.z[0]) / 2;
           const newSpineId = loader.addSpine(selectedSegment, x, y, z);
           if (newSpineId) {
-            setPendingEditVersion((x) => x + 1);
+            dataChanged();
             SELECTED_SPINE.value = newSpineId;
           }
         },
@@ -127,18 +133,15 @@ export function useAnnotations(options: AnnotationsProps): any[] {
       const data = decodeDatasetFromProxy(layerProxy);
       // console.timeEnd("parseAnnotation");
       const interactions = INTERACTIONS.map((key) => properties.get(key));
-      const options = interactions.map((key) =>
-        extractInteraction(annotationSelections, key)
-      );
       const offset = properties.get("offset");
       const outline = properties.get("outline");
       const fixed = properties.get("fixed");
       const isLabel = properties.get("label") === true;
       const hasOffset = offset !== undefined;
       const hasOutline = outline !== undefined;
-      const translateId = properties.get("translate");
+      const translate = properties.get("translate");
       const pickable =
-        interactions.some((x) => x !== undefined) || translateId !== undefined;
+        interactions.some((x) => x !== undefined) || translate !== undefined;
 
       const layer = new GeoJsonLayer({
         id: `-#${id}#-annotations-${layerId}`,
@@ -162,55 +165,43 @@ export function useAnnotations(options: AnnotationsProps): any[] {
           if (!selector) return;
           selector.value = selection;
         },
-        onDragStart: (pickingInfo, event) => {
-          if (!pickingInfo.coordinate || !translateId) return;
-          dragging = translateId;
-          pendingDragStart = pickingInfo.coordinate!;
-          event.stopImmediatePropagation();
-        },
-        onDrag: (pickingInfo, event) => {
-          const id = (pickingInfo.sourceLayer?.props.data as any).properties[
-            pickingInfo.index
-          ]?.id;
-          if (
-            dragging !== translateId ||
-            !pickingInfo.coordinate ||
-            !pendingDragStart ||
-            !id
-          )
-            return;
-          let [x, y] = pickingInfo.coordinate!;
-          x -= pendingDragStart![0];
-          y -= pendingDragStart![1];
-          pendingDragStart = pickingInfo.coordinate!;
-          if (loader.translate(translateId, id, x, y, false))
-            setPendingEditVersion((x) => x + 1);
+        onDragStart: translate
+          ? (pickingInfo, event) => {
+              if (!pickingInfo.coordinate) return;
+              dragging = layerId;
+              event.stopImmediatePropagation();
+              firstTranslate = true;
+            }
+          : undefined,
+        onDrag: translate
+          ? (pickingInfo, event) => {
+              const id = (pickingInfo.sourceLayer?.props.data as any)
+                .properties[pickingInfo.index]?.id;
+              if (dragging !== layerId || !pickingInfo.coordinate || !id)
+                return;
+              let [x, y] = pickingInfo.coordinate!;
+              if (translate(id, x, y, firstTranslate)) dataChanged();
 
-          event.stopImmediatePropagation();
-        },
-        onDragEnd: (pickingInfo, event) => {
-          const id = (pickingInfo.sourceLayer?.props.data as any).properties[
-            pickingInfo.index
-          ]?.id;
-          if (dragging !== translateId || !id || !pendingDragStart) return;
-          let [x, y] = pickingInfo.coordinate! ?? [0, 0];
-          x -= pendingDragStart![0];
-          y -= pendingDragStart![1];
-
-          if (loader.translate(translateId, id, x, y, true))
-            setPendingEditVersion((x) => x + 1);
-          event.stopImmediatePropagation();
-          pendingDragStart = undefined;
-          dragging = undefined;
-        },
-        getFillColor: getFeature(properties, "fill", options, true) || [
-          0, 0, 0, 0,
-        ],
-        getLineColor: getFeature(properties, "stroke", options, true) || [
-          0, 0, 0, 0,
-        ],
-        getLineWidth: getFeature(properties, "strokeWidth", options) || 1,
-        getPointRadius: getFeature(properties, "radius", options) || 1,
+              firstTranslate = false;
+              event.stopImmediatePropagation();
+            }
+          : undefined,
+        onDragEnd: translate
+          ? (pickingInfo, event) => {
+              const id = (pickingInfo.sourceLayer?.props.data as any)
+                .properties[pickingInfo.index]?.id;
+              if (dragging !== layerId || !id) return;
+              let [x, y] = pickingInfo.coordinate! ?? [0, 0];
+              if (translate(id, x, y, firstTranslate)) dataChanged();
+              firstTranslate = false;
+              event.stopImmediatePropagation();
+              dragging = undefined;
+            }
+          : undefined,
+        getFillColor: getFeature(properties, "fill", true) || [0, 0, 0, 0],
+        getLineColor: getFeature(properties, "stroke", true) || [0, 0, 0, 0],
+        getLineWidth: getFeature(properties, "strokeWidth") || 1,
+        getPointRadius: getFeature(properties, "radius") || 1,
         lineCapRounded: false,
         lineJointRounded: false,
         textFontWeight: 700,
@@ -218,12 +209,15 @@ export function useAnnotations(options: AnnotationsProps): any[] {
           ? (x: Feature<Geometry, GeoJsonProperties>) => x.properties?.id
           : undefined,
         getTextColor: isLabel
-          ? getFeature(properties, "fill", options, true) || [0, 0, 0, 0]
+          ? getFeature(properties, "fill", true) || [0, 0, 0, 0]
           : undefined,
         textSizeMaxPixels,
         jointRounded: true,
         textSizeMinPixels,
-        getOffset: offset,
+        getOffset:
+          offset instanceof py.ffi.PyCallable
+            ? (x: Feature<Geometry, GeoJsonProperties>) => offset(x.properties?.id)
+            : offset,
         getDashArray: hasOffset ? [6, 6] : undefined,
         getOutlineWidth: outline,
         extensions: hasOffset
@@ -395,38 +389,25 @@ function decodePosition(layerProxy: PyProxy) {
 function getFeature(
   properties: Map<string, any>,
   key: string,
-  interactions: (string | undefined)[],
   hasOpacity: boolean = false
 ): ((x: Feature<Geometry, GeoJsonProperties>) => any) | undefined {
-  let value = toJs(properties.get(key));
+  let value = properties.get(key);
+
+  if (value instanceof py.ffi.PyCallable) {
+    const opacity = hasOpacity ? properties.get("opacity") : undefined;
+    return (x: Feature<Geometry, GeoJsonProperties>) =>
+      setOpacity(toJs(value(x.properties?.id)), opacity);
+  }
+
+  value = toJs(properties.get(key));
   if (!value) return undefined;
 
   const opacity = hasOpacity ? properties.get("opacity") : undefined;
   value = setOpacity(value, opacity);
-
-  const variants = interactions.map((inter, i) =>
-    inter
-      ? setOpacity(toJs(properties.get(`${INTERACTIONS[i]}.${key}`)), opacity)
-      : undefined
-  );
-
-  if (!variants.some((x) => x !== undefined)) return value;
-
-  return (x: Feature<Geometry, GeoJsonProperties>) => {
-    const idx = interactions.indexOf(x.properties!.id);
-    return idx === -1 ? value : variants[idx];
-  };
+  return value;
 }
 
 function toJs(any: any): any {
   if (any instanceof Object && any["toJs"]) return any.toJs();
   return any;
-}
-
-function extractInteraction(
-  selections: Record<string, string>,
-  id: string | undefined
-): string | undefined {
-  if (!id) return undefined;
-  return selections[id];
 }
