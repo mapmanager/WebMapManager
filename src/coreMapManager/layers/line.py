@@ -1,12 +1,14 @@
+from typing import Callable, Tuple, Union
 import numpy as np
-from layers.layer import Layer
-from layers.utils import dropZ, getCoords
+from .layer import Layer
+from .utils import dropZ, getCoords
 from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import substring, clip_by_rect
 import shapely
 import geopandas as gp
-from benchmark import timer
-from layers.polygon import PolygonLayer
+from ..benchmark import timer
+from .polygon import PolygonLayer
+
 
 class MultiLineLayer(Layer):
     @timer
@@ -14,13 +16,13 @@ class MultiLineLayer(Layer):
         self.series = self.series.apply(lambda x: x.buffer(*args, **kwargs))
         return PolygonLayer(self)
 
-    @Layer.__withEvent__
-    def offset(self, offset: int):
+    @Layer.setProperty
+    def offset(self, offset: Union[int, Callable[[str], int]]):
         ("implemented by decorator", offset)
         return self
 
-    @Layer.__withEvent__
-    def outline(self, outline: int):
+    @Layer.setProperty
+    def outline(self, outline: Union[int, Callable[[str], int]]):
         ("implemented by decorator", outline)
         return self
 
@@ -42,15 +44,22 @@ class MultiLineLayer(Layer):
 
 class LineLayer(MultiLineLayer):
     # clip the shapes z axis
-    def clipZ(self, zRange: (int, int)):
+    def clipZ(self, zRange: Tuple[int, int]):
         self.series = self.series.apply(clipLine, zRange=zRange)
         self.series.dropna(inplace=True)
         return MultiLineLayer(self)
 
     @timer
-    def subLine(df: gp.GeoDataFrame, distance: int, linc: str, originc: str):
-        series = df.apply(lambda d: calcSubLine(d[linc], d[originc], distance), axis=1)
+    def createSubLine(df: gp.GeoDataFrame, distance: int, linc: str, originc: str):
+        series = df.apply(lambda d: calcSubLine(
+            d[linc], d[originc], distance), axis=1)
         return LineLayer(series)
+
+    @timer
+    def subLine(self, distance: int):
+        self.series = self.series.apply(lambda d: calcSubLine(
+            d, getTail(d), distance))
+        return self
 
     @timer
     def simplify(self, res: int):
@@ -58,15 +67,24 @@ class LineLayer(MultiLineLayer):
         return self
 
     def extend(self, distance=0.5, originIdx=0):
-        self.series = self.series.apply(
-            lambda x: extend(x, x.coords[originIdx], distance=distance))
+        if isinstance(distance, gp.GeoSeries):
+            self.series = self.series.combine(distance, lambda x, distance: extend(
+                x, x.coords[originIdx], distance=distance))
+        else:
+            self.series = self.series.apply(
+                lambda x: extend(x, x.coords[originIdx], distance=distance))
         return self
+
+
+def getTail(d):
+    return Point(d.coords[1][0], d.coords[1][1])
 
 
 @timer
 def calcSubLine(line: LineLayer, origin: Point, distance: int):
     root = line.project(origin)
-    sub = substring(line, start_dist=max(root - distance, 0), end_dist=root + distance)
+    sub = substring(line, start_dist=max(
+        root - distance, 0), end_dist=root + distance)
     return sub
 
 
@@ -82,7 +100,7 @@ def pushLine(segment, lines):
     lines.append(segment)
 
 
-def clipLine(line: LineString, zRange: (int, int)):
+def clipLine(line: LineString, zRange: Tuple[int, int]):
     z_min, z_max = zRange
 
     zInRange = [z_min <= p[2] < z_max for p in line.coords]

@@ -1,11 +1,11 @@
 import warnings
 import geopandas as gp
 import shapely
-from typing import Literal
-from benchmark import timer
+from typing import Callable, Literal, Tuple, Union
+from ..benchmark import timer
 
 EventIDs = Literal["edit", "select"]
-
+Color = Tuple[int, int, int, int]
 
 class Layer:
     def __init__(self, series: gp.GeoSeries):
@@ -34,41 +34,39 @@ class Layer:
         self.properties["source"] = [functionName, argsNames]
         return self
 
-    def __withEvent__(func):
-        def wrapped(self, value=True, on=None):
+    def setProperty(func):
+        def wrapped(self, value=True):
             key = func.__name__
-            if on is not None:
-                key = on + "." + key
             self.properties[key] = value
             return self
         return wrapped
 
-    def onTranslate(self, id: str):
-        self.properties["translate"] = id
+    def onTranslate(self, func: Callable[[str, int, int, bool], bool]):
+        self.properties["translate"] = func
         return self
 
     def fixed(self, fixed: bool = True):
         self.properties["fixed"] = fixed
         return self
 
-    @__withEvent__
-    def stroke(self, color: [int, int, int, int], on: EventIDs = None):
-        ("implemented by decorator", color, on)
+    @setProperty
+    def stroke(self, color: Union[Color, Callable[[str], Color]]):
+        ("implemented by decorator", color)
         return self
 
-    @__withEvent__
-    def strokeWidth(self, width: int, on: EventIDs = None):
-        ("implemented by decorator", width, on)
+    @setProperty
+    def strokeWidth(self, width: Union[int, Callable[[str], int]]):
+        ("implemented by decorator", width)
         return self
 
-    @__withEvent__
-    def fill(self, color: [int, int, int, int], on: EventIDs = None):
-        ("implemented by decorator", color, on)
+    @setProperty
+    def fill(self, color: Union[Color, Callable[[str], Color]]):
+        ("implemented by decorator", color)
         return self
 
-    @__withEvent__
-    def opacity(self, opacity: int, on: EventIDs = None):
-        ("implemented by decorator", opacity, on)
+    @setProperty
+    def opacity(self, opacity: int):
+        ("implemented by decorator", opacity)
         return self
 
     def _encodeBin(self):

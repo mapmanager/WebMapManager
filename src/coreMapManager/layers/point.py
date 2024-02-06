@@ -1,14 +1,15 @@
+from typing import Callable, Tuple, Union
 import numpy as np
-from layers.layer import Layer
-from layers.utils import getCoords, inRange, dropZ
-from layers.line import LineLayer
+from .layer import Layer
+from .utils import getCoords, inRange, dropZ
+from .line import LineLayer
 import geopandas as gp
 from shapely.geometry import LineString, Point
 
 
 class PointLayer(Layer):
     # clip the shapes z axis
-    def clipZ(self, range: (int, int)):
+    def clipZ(self, range: Tuple[int, int]):
         self.series = self.series[inRange(self.series.z, range=range)]
         self.series = self.series.apply(dropZ)
         return self
@@ -18,14 +19,14 @@ class PointLayer(Layer):
             self.series, lambda x, x1: LineString([x, x1]))
         return LineLayer(self)
 
-    @Layer.__withEvent__
-    def radius(self, radius: int):
+    @Layer.setProperty
+    def radius(self, radius: Union[int, Callable[[str], int]]):
         ("implemented by decorator", radius)
         return self
     
     """Adds text labels using the index of the series
     """
-    @Layer.__withEvent__
+    @Layer.setProperty
     def label(self, show=True):
         ("implemented by decorator", show)
         return self

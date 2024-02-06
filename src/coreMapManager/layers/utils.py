@@ -2,8 +2,8 @@ import inspect
 import numpy as np
 from shapely.geometry import MultiPoint, LineString, Point, Polygon, MultiLineString,MultiPolygon
 import shapely
-from layers.layer import Layer
-from benchmark import timer
+from .layer import Layer
+from ..benchmark import timer
 
 def getCoords(shape):
     if isinstance(shape, Point):
@@ -43,3 +43,6 @@ def Sourced(func):
         layer.source(func.__name__, dependencies)
         return layer
     return sourced
+
+def roundPoint(point: Point, ndig=0):
+    return Point(round(point.x, ndig), round(point.y, ndig), round(point.z, ndig))
