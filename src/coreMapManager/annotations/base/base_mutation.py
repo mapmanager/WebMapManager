@@ -3,7 +3,7 @@ import geopandas as gp
 import numpy as np
 import pandas as pd
 from ..types import SpineId
-from ...log import RecordLog
+from ...log import Op, RecordLog
 from enum import Enum
 from .base import AnnotationsBase
 
@@ -13,21 +13,13 @@ class AnnotationType(Enum):
     LineSegment = 2
 
 
-class Op:
-    type: AnnotationType
-    diff: pd.DataFrame
-    id: str
-
-    def __init__(self, id: str, type: AnnotationType, diff: pd.DataFrame):
-        self.type = type
-        self.diff = diff
-        self.id = id
-
-
 class AnnotationsBaseMut(AnnotationsBase):
+    _log: RecordLog[AnnotationType]
+
     def __init__(self, loader: gp.GeoDataFrame, points: gp.GeoDataFrame, lineSegments: gp.GeoDataFrame):
-        super().__init__(loader, points, lineSegments);
+        super().__init__(loader, points, lineSegments)
         self._log = RecordLog()
+
     #  TODO: create from log: withLog(self, loader: ImageLoader, log: RecordLog):
 
     def undo(self):
@@ -100,35 +92,54 @@ class AnnotationsBaseMut(AnnotationsBase):
 
     def _update(self, type: AnnotationType, id: str, value: Union[dict, gp.GeoSeries, pd.Series], replaceLog=False, skipLog=False):
         df = self._getDf(type)
-        if id in df.index:
-            if isinstance(value, pd.Series) and value.dropna().empty:
-                return self._delete(type, id, skipLog=skipLog)
 
+        if isinstance(value, dict):
+            value = pd.Series(value)
+
+        if id in df.index:
+            # merge the new value with the old one
             original = df.loc[id]
             updated = original.copy()
-            updated.update(value)
+
+            for key, val in value.items():
+                updated[key] = val
+
+            # delete if the value is empty
+            if updated.drop("modified").dropna().empty:
+                return self._delete(type, id, skipLog=skipLog)
+
             df.loc[id] = updated
+
+            # create a diff of the changes
             diff = original.compare(updated)
+            diff.rename(columns={"self": "before",
+                        "other": "after"}, inplace=True)
         else:
+            # add a new value
             df.loc[id] = value
             diff = pd.DataFrame({
-                "self": pd.Series(),
-                "other": df.loc[id].copy()
+                "before": pd.Series(),
+                "after": df.loc[id].copy()
             })
 
         df.loc[id, "modified"] = np.datetime64("now")
 
-        if diff.empty or skipLog:
+        if skipLog:
             return
 
-        diff.rename(columns={"self": "before", "other": "after"}, inplace=True)
+        # Add the operation to the log
+        if diff.empty:
+            if replaceLog:
+                return
+            
+            diff = pd.DataFrame({
+                "before": value,
+                "after": value,
+            })
 
-        if replaceLog:
-            # replace the last operation in the log
-            peak = self._log.peak()
-            if peak is not None and peak.type == type and peak.id == id:
-                peak.diff["after"] = diff["after"]
+            if diff.empty:
+                self._log.createState()
                 return
 
-        # add a new operation to the log
-        self._log.push(Op(id, type, diff))
+
+        self._log.push(Op(id, type, diff), replace=replaceLog)
