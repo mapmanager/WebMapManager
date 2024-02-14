@@ -46,7 +46,8 @@ class AnnotationsInteractions(AnnotationsBaseMut):
             "anchor": Point(anchor.x, anchor.y),
             "z": anchor.z,
             "xBackgroundOffset": 0,
-            "yBackgroundOffset": 0
+            "yBackgroundOffset": 0,
+            "roiExtend": 4,
         })
 
         return spineId
@@ -122,15 +123,17 @@ class AnnotationsInteractions(AnnotationsBaseMut):
         """
         point = self._points.loc[spineId]
 
-        if not first:
-            self.updateSpine(spineId, {
-                "xBackgroundOffset": point["xBackgroundOffset"] + x - self.pendingBackgroundRoiTranslation[0],
-                "yBackgroundOffset": point["yBackgroundOffset"] + y - self.pendingBackgroundRoiTranslation[1],
-            }, not first)
+        if first:
+            self.pendingBackgroundRoiTranslation = [x, y]
+
+        self.updateSpine(spineId, {
+            "xBackgroundOffset": point["xBackgroundOffset"] + x - self.pendingBackgroundRoiTranslation[0],
+            "yBackgroundOffset": point["yBackgroundOffset"] + y - self.pendingBackgroundRoiTranslation[1],
+        }, not first)
 
         self.pendingBackgroundRoiTranslation = [x, y]
 
-        return not first
+        return True
 
     def translateRoiExtend(self, spineId: str, x: int, y: int, first: bool) -> bool:
         """
