@@ -1,4 +1,4 @@
 {
-  "micropip": ["async-lru", "asyncio"],
-  "loadPackage": ["numpy", "pandas", "scikit-image", "geopandas", "shapely"]
+  "micropip": ["async-lru", "asyncio", "tifffile"],
+  "loadPackage": ["numpy", "pandas", "scikit-image", "geopandas", "shapely", "scikit-image"]
 }

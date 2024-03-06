@@ -1,11 +1,19 @@
 import warnings
 import geopandas as gp
+import pandas as pd
 import shapely
-from typing import Callable, Literal, Tuple, Union
+from typing import Callable, List, Literal, Self, Tuple, Union
 from ..benchmark import timer
 
 EventIDs = Literal["edit", "select"]
 Color = Tuple[int, int, int, int]
+
+
+class DragState:
+    START = 0
+    DRAGGING = 1
+    END = 2
+
 
 class Layer:
     def __init__(self, series: gp.GeoSeries):
@@ -18,19 +26,19 @@ class Layer:
         self.series.index.name = "id"
         self.properties = {}
 
-    def on(self, event: EventIDs, key: str):
+    def on(self, event: EventIDs, key: str) -> Self:
         self.properties[event] = key
         return self
 
-    def id(self, id: str):
+    def id(self, id: str) -> Self:
         self.properties["id"] = id
         return self
 
-    def mask(self, by: str = ""):
+    def mask(self, by: str = "") -> Self:
         self.properties["mask"] = by
         return self
 
-    def source(self, functionName: str, argsNames: list[str]):
+    def source(self, functionName: str, argsNames: list[str]) -> Self:
         self.properties["source"] = [functionName, argsNames]
         return self
 
@@ -41,33 +49,43 @@ class Layer:
             return self
         return wrapped
 
-    def onTranslate(self, func: Callable[[str, int, int, bool], bool]):
-        self.properties["translate"] = func
+    def onDrag(self, func: Callable[[str, int, int, DragState, bool], bool]) -> Self:
+        self.properties["drag"] = func
         return self
 
-    def fixed(self, fixed: bool = True):
+    def fixed(self, fixed: bool = True) -> Self:
         self.properties["fixed"] = fixed
         return self
 
+    def filter(self, mask: pd.Series) -> Self:
+        self.series = self.series[mask]
+        return self
+
+    def splitGhost(self, visibleMask: pd.Series, opacity=int) -> List[Self]:
+        return [self.copy(id="ghost").filter(~visibleMask).opacity(opacity), self.filter(visibleMask)]
+
     @setProperty
-    def stroke(self, color: Union[Color, Callable[[str], Color]]):
+    def stroke(self, color: Union[Color, Callable[[str], Color]]) -> Self:
         ("implemented by decorator", color)
         return self
 
     @setProperty
-    def strokeWidth(self, width: Union[int, Callable[[str], int]]):
+    def strokeWidth(self, width: Union[int, Callable[[str], int]]) -> Self:
         ("implemented by decorator", width)
         return self
 
     @setProperty
-    def fill(self, color: Union[Color, Callable[[str], Color]]):
+    def fill(self, color: Union[Color, Callable[[str], Color]]) -> Self:
         ("implemented by decorator", color)
         return self
 
     @setProperty
-    def opacity(self, opacity: int):
+    def opacity(self, opacity: int) -> Self:
         ("implemented by decorator", opacity)
         return self
+
+    def empty(self) -> bool:
+        return self.series.empty
 
     def _encodeBin(self):
         "abstract"
@@ -85,12 +103,12 @@ class Layer:
         }
 
     @timer
-    def translate(self, translate: gp.GeoSeries = None):
+    def translate(self, translate: gp.GeoSeries = None) -> Self:
         self.series = self.series.combine(
             translate, lambda g, o: shapely.affinity.translate(g, o.iloc[0, 0], o.iloc[0, 1]))
         return self
 
-    def copy(self, series: gp.GeoSeries = None, id=""):
+    def copy(self, series: gp.GeoSeries = None, id="") -> Self:
         cls = self.__class__
         result = cls.__new__(cls)
         result.properties = self.properties.copy()

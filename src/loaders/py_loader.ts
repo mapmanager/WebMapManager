@@ -9,8 +9,11 @@ import {
   AnnotationsOptions,
   SegmentsAndSpinesResult,
   newPixelSource,
+  pdDataFrame,
+  pdSeries,
   pyImageSource,
   pyPixelSource,
+  pyQuery,
 } from "../python";
 import { SIGNAL_ABORTED } from "@hms-dbmi/viv";
 import { ImageViewSelection } from "../components/plugins/ImageView";
@@ -124,6 +127,18 @@ export class PyPixelSource extends AnnotatedPixelSource {
     return this.#proxy.getSpinePosition(t, spineID);
   }
 
+  public queries(): pyQuery[] {
+    return this.#proxy.queries().toJs();
+  }
+
+  public async runQuery(query: pyQuery): Promise<pdSeries> {
+    return this.#proxy.runQuery(query);
+  }
+
+  public async table(): Promise<pdDataFrame> {
+    return this.#proxy.table();
+  }
+
   public addSpine(
     segmentId: string,
     x: number,
@@ -135,11 +150,5 @@ export class PyPixelSource extends AnnotatedPixelSource {
 
   public deleteSpine(spineId: string) {
     this.#proxy.deleteSpine(spineId);
-  }
-
-  public getSpineStats(
-    statNames?: (string | null)[] | undefined
-  ): Record<string, string | number>[] {
-    throw new Error("Method not implemented.");
   }
 }

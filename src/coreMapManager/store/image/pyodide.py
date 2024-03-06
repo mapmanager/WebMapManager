@@ -1,8 +1,11 @@
-from typing import Tuple
+import asyncio
+from typing import List, Tuple
 import numpy as np
 from pyodide.http import pyfetch
 from async_lru import alru_cache
-from .base import ImageLoader
+from .base import ImageLoader, ArrayImageLoader
+from tifffile import imread, imwrite
+from io import BytesIO
 
 
 class PyodideImageLoader(ImageLoader):
@@ -31,21 +34,6 @@ class PyodideImageLoader(ImageLoader):
         image = await response.memoryview()
         return np.frombuffer(image, np.uint16)
 
-    @alru_cache(maxsize=10)
-    async def fetchSlices(self, time: int, channel: int, sliceRange: Tuple[int, int]) -> np.ndarray:
-        """
-        Fetches a range of slices for the given time, channel, and slice range.
-
-        Args:
-          time (int): The time index.
-          channel (int): The channel index.
-          sliceRange (tuple): The range of slice indices.
-
-        Returns:
-          np.ndarray: The fetched slices.
-        """
-        return await super().fetchSlices(time, channel, sliceRange)
-
     def urlForImg(self, time: int, channel: int, slice: int) -> str:
         """
             Loads a slice of data for the given time, channel, and slice index.
@@ -59,3 +47,48 @@ class PyodideImageLoader(ImageLoader):
               str: The url to the image.
         """
         return f"{self.url}t{time}/ch{channel}/z{slice}.br"
+
+    # async def getPolygons(self, polygons: gp.GeoDataFrame, zExpand: int = 0, channel: int = 0):
+    #     # Cache optimization, read all ROIs in order to increase cache hits
+    #     polygons.sort_values(by=["t", "z"], inplace=True)
+
+    #     async def processImage(row):
+    #         xs, ys = polygonIndexes(row["polygon"])
+    #         return await self.get(row["t"], z=(row["z"] - zExpand, row["z"] + zExpand + 1), x=xs, y=ys, channel=channel)
+
+    #     pending = [processImage(row) for _, row in polygons.iterrows()]
+    #     ready = await asyncio.gather(*pending)
+    #     return pd.Series(ready, index=polygons.index)
+
+
+async def fetchBytes(url: str):
+    response = await pyfetch(url)
+    return await response.memoryview()
+
+
+async def loadTiffsFromUrl(urls: List[List[List[str]]]) -> ArrayImageLoader:
+    pending = []
+
+    for time in urls:
+        for channels in time:
+            for url in channels:
+                pending.append(fetchBytes(url))
+
+    if len(pending) == 1:
+        results = [await pending[0]]
+    else:
+        results = await asyncio.gather(*pending)
+
+    # TODO: use a single file
+    images = []
+    for time in urls:
+        channelsImages = []
+        for channels in time:
+            for url in channels:
+                buffer = bytearray(results.pop(0))
+                channelsImages.append(imread(BytesIO(buffer)))
+        images.append(channelsImages)
+
+    return ArrayImageLoader(np.array(images))
+
+ArrayImageLoader.loadTiffsFromUrl = loadTiffsFromUrl

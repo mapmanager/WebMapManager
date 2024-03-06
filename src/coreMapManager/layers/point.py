@@ -1,33 +1,33 @@
-from typing import Callable, Tuple, Union
+from typing import Callable, Self, Tuple, Union
 import numpy as np
+import geopandas as gp
+from shapely.geometry import LineString
 from .layer import Layer
 from .utils import getCoords, inRange, dropZ
-from .line import LineLayer
-import geopandas as gp
-from shapely.geometry import LineString, Point
 
 
 class PointLayer(Layer):
     # clip the shapes z axis
-    def clipZ(self, range: Tuple[int, int]):
+    def clipZ(self, range: Tuple[int, int]) -> Self:
         self.series = self.series[inRange(self.series.z, range=range)]
         self.series = self.series.apply(dropZ)
         return self
 
     def toLine(self, points: gp.GeoSeries):
+        from .line import LineLayer
         self.series = points.combine(
             self.series, lambda x, x1: LineString([x, x1]))
         return LineLayer(self)
 
     @Layer.setProperty
-    def radius(self, radius: Union[int, Callable[[str], int]]):
+    def radius(self, radius: Union[int, Callable[[str], int]]) -> Self:
         ("implemented by decorator", radius)
         return self
-    
+
     """Adds text labels using the index of the series
     """
     @Layer.setProperty
-    def label(self, show=True):
+    def label(self, show=True) -> Self:
         ("implemented by decorator", show)
         return self
 
@@ -41,9 +41,3 @@ class PointLayer(Layer):
             "featureIds": coords.index.to_numpy(dtype=np.uint16),
             "positions": coords.explode().to_numpy(dtype=np.float32),
         }}
-
-def tail(self):
-    points = PointLayer(self)
-    points.series = points.series.apply(lambda x: Point(x.coords[-1]))
-    return points
-LineLayer.tail = tail

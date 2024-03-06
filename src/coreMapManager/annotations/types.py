@@ -1,8 +1,9 @@
-from typing import TypedDict, Tuple
+from typing import List, TypedDict, Tuple
 
 import numpy as np
 
 SpineId = str
+
 
 class AnnotationsSelection(TypedDict):
     """
@@ -13,6 +14,7 @@ class AnnotationsSelection(TypedDict):
       spineID (str): The ID of the spine.
     """
     segmentID: str
+    segmentIDEditing: str
     spineID: str
 
 
@@ -65,7 +67,7 @@ class ImageSlice:
         Returns:
           np.ndarray: The image data.
         """
-        return self._image
+        return self._image.flatten()
 
     def extent(self) -> Tuple[int, int]:
         """
@@ -76,7 +78,7 @@ class ImageSlice:
         """
         return (self._image.min(), self._image.max())
 
-    def bins(self, binCount: int = 256) -> [Tuple[int, int]]:
+    def bins(self, binCount: int = 256) -> List[Tuple[int, int]]:
         """
         Calculate the histogram bins for the image.
 
@@ -89,3 +91,16 @@ class ImageSlice:
         counts, bounds = np.histogram(self._image, binCount)
         return [((bounds[i] + bounds[i + 1]) / 2, int(counts[i])) for i in range(0, len(counts))]
 
+    def plot(self, ax=None, cmap: str = 'viridis', **kwargs):
+        """
+        Plots the image data.
+
+        Args:
+          ax: The axis to plot the image on.
+          cmap (str): The colormap to use for the image. Default is 'viridis'.
+        """
+        from matplotlib import pyplot as plt
+        if ax is None:
+            ax = plt.gca()
+
+        ax.imshow(self._image, cmap=cmap, interpolation='nearest', **kwargs)
