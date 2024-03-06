@@ -4,10 +4,10 @@
   },
   "python.formatting.provider": "none",
   "python.analysis.extraPaths": [
-    "./src/coreMapManager",
+    "./src/MapManagerCore",
   ],
   "python.testing.pytestEnabled": false,
   "python.testing.unittestEnabled": true,
-  "python.testing.cwd": "${workspaceFolder}/src/coreMapManager",
+  "python.testing.cwd": "${workspaceFolder}/src/MapManagerCore",
   "python.testing.autoTestDiscoverOnSaveEnabled": true,
 }
