@@ -16,7 +16,7 @@ globalThis.py = await window.loadPyodide({}).then(async (py) => {
   }
 
   // preloads all python files in the py dir to pyodide.
-  const r = (require as any).context("./MapManagerCore", true, /\.py$/);
+  const r = (require as any).context("./MapManagerCore/MapManagerCore", true, /\.py$/);
   for (const key of r.keys()) {
     const content = r(key);
     const path = ("./MapManagerCore" + key.slice(1)) as string;
