@@ -1,12 +1,13 @@
 import { useAsync } from "react-use";
-import { AnnotatedPixelSource, ViewSelection } from "../loaders/annotations";
+import { ViewSelection } from "../loaders/annotations";
+import { PyPixelSource } from "../loaders/py_loader";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
 import {
+  EDITING_SEGMENT,
   SELECTED_SEGMENT,
   SELECTED_SPINE,
   setFilters,
 } from "./plugins/globals";
-import { PyPixelSource } from "../loaders/py_loader";
 import { pyImageSource } from "../python";
 
 export type ImageSource = string;
@@ -23,11 +24,12 @@ window.addEventListener(
     isAltKeyDown = event.altKey;
     isShiftKeyDown = event.shiftKey;
     if (event.key === "Escape") {
-      if (SELECTED_SEGMENT.peek() && SELECTED_SPINE.peek()) {
+      if (EDITING_SEGMENT.peek() && SELECTED_SPINE.peek()) {
         SELECTED_SPINE.value = undefined;
         return;
       }
       SELECTED_SPINE.value = undefined;
+      EDITING_SEGMENT.value = undefined;
       SELECTED_SEGMENT.value = undefined;
       setFilters(undefined);
     }
@@ -108,7 +110,7 @@ export function useImageLoader(src: ImageSource): {
  * @returns the set of selected rasters
  */
 export function useRasters(
-  loader: AnnotatedPixelSource | undefined,
+  loader: PyPixelSource | undefined,
   selections: ViewSelection[]
 ): {
   rasters?: any[];
@@ -134,7 +136,7 @@ export function useRasters(
 }
 
 export function useRasterSources(
-  loader: AnnotatedPixelSource | undefined,
+  loader: PyPixelSource | undefined,
   selections: ViewSelection[]
 ): {
   sources?: (pyImageSource | undefined)[];

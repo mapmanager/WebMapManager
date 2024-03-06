@@ -4,7 +4,7 @@ import "./index.scss";
 import { ZScroll } from "./z";
 import { PanelGroup, Panel, Checkbox } from "rsuite";
 import { Inspector } from "../../layout";
-import { SELECTED_SPINE } from "../globals";
+import { EDITING_SEGMENT, SELECTED_SPINE } from "../globals";
 import { ImageViewer } from "./sharedViewer";
 import { PluginProps } from "..";
 import {
@@ -13,6 +13,7 @@ import {
   useComputed,
   useSignal,
   batch,
+  useSignalEffect,
 } from "@preact/signals-react";
 import { useAnnotations } from "./layers";
 import { isAltKeyDown, useLinkedSignal, useRasterSources } from "../../utils";
@@ -120,7 +121,7 @@ export function ImageView({
     });
   }, [loader, selection, isActive, linked.value, target]);
 
-  const annotationLayers = useAnnotations({
+  const annotationLayers = useAnnotations(selection, {
     id,
     loader,
     showLineSegments: showLineSegments.value,
@@ -131,6 +132,17 @@ export function ImageView({
     showLineSegmentsRadius: showLineSegmentsRadius.value,
     annotationSelections: {},
     visible,
+  });
+
+  useSignalEffect(() => {
+    if (EDITING_SEGMENT.value) {
+      // restrict z when segment is being edited
+      const { t, z } = selection.value;
+      if (z[0] - z[1] !== -1) {
+        const mean = Math.trunc((z[0] + z[1]) / 2);
+        selection.value = { t, z: [mean, mean + 1] };
+      }
+    }
   });
 
   if (!visible) return <></>;

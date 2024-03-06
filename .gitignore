@@ -130,4 +130,4 @@ dist
 .pnp.*
 
 .DS_Store
-src/python/data/
+__pycache__/

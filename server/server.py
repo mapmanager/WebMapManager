@@ -43,7 +43,7 @@ def decompress(image, brotli=False):
     if brotli:
         image = brotli.decompress(image)
     (_, array, _, _) = lerc.decode_4D(image)
-    return array;
+    return array
     
 if __name__ == '__main__':
     app.run(port=5002, host="0.0.0.0", debug=False)
