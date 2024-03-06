@@ -1,7 +1,7 @@
 import { PyProxy } from "pyodide/ffi";
 import { ImageViewSelection } from "./components/plugins/ImageView";
 // @ts-ignore
-import requirements from "./coreMapManager/requirements.json";
+import requirements from "./MapManagerCore/requirements.json";
 
 // Load python
 globalThis.py = await window.loadPyodide({}).then(async (py) => {
@@ -16,10 +16,10 @@ globalThis.py = await window.loadPyodide({}).then(async (py) => {
   }
 
   // preloads all python files in the py dir to pyodide.
-  const r = (require as any).context("./coreMapManager", true, /\.py$/);
+  const r = (require as any).context("./MapManagerCore", true, /\.py$/);
   for (const key of r.keys()) {
     const content = r(key);
-    const path = ("./coreMapManager" + key.slice(1)) as string;
+    const path = ("./MapManagerCore" + key.slice(1)) as string;
     createAllParentDirs(path);
 
     py.FS.writeFile(path, content, {
@@ -115,7 +115,7 @@ export interface pyPixelSource {
 }
 
 const newPixelSource = (await py.runPythonAsync(`
-from coreMapManager.pyodide_main import createAnnotations
+from MapManagerCore.pyodide_main import createAnnotations
 createAnnotations
 `)) as (srcPath: string) => Promise<pyPixelSource>;
 

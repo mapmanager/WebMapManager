@@ -1,1 +1,0 @@
-from .annotations.file_loader import MapAnnotations
