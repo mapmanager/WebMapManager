@@ -1,11 +1,12 @@
 from typing import Union
 from shapely.geometry import Point
+from ...layers.layer import DragState
+from .query import QueryAnnotations
 from ...layers.utils import roundPoint
 from itertools import count
-from .base_mutation import AnnotationsBaseMut
 
 
-class AnnotationsInteractions(AnnotationsBaseMut):
+class AnnotationsInteractions(QueryAnnotations):
 
     def nearestAnchor(self, segmentID: str, point: Point, brightestPath=False):
         """
@@ -43,8 +44,9 @@ class AnnotationsInteractions(AnnotationsBaseMut):
         self.updateSpine(spineId, {
             "segmentID": segmentId,
             "point": Point(point.x, point.y),
+            "z": z,
             "anchor": Point(anchor.x, anchor.y),
-            "z": anchor.z,
+            "anchorZ": anchor.z,
             "xBackgroundOffset": 0,
             "yBackgroundOffset": 0,
             "roiExtend": 4,
@@ -66,33 +68,34 @@ class AnnotationsInteractions(AnnotationsBaseMut):
             if uid not in self._points.index:
                 return uid
 
-    def translateSpine(self, spineId: str, x: int, y: int, first: bool) -> bool:
+    def moveSpine(self, spineId: str, x: int, y: int, z: int, state: DragState = DragState.START) -> bool:
         """
-        Translates the spine identified by `spineId` by the given `x` and `y` coordinates.
+        Moves the spine identified by `spineId` to the given `x` and `y` coordinates.
 
         Args:
             spineId (str): The ID of the spine to be translated.
-            x (int): The x-coordinate of the translation.
-            y (int): The y-coordinate of the translation.
+            x (int): The x-coordinate of the cursor.
+            y (int): The y-coordinate of the cursor.
 
         Returns:
             bool: True if the spine was successfully translated, False otherwise.
         """
         self.updateSpine(spineId, {
-            "point": Point(x, y)
-        }, not first)
+            "point": Point(x, y),
+            "z": z,
+        }, state != DragState.START)
 
         return True
 
-    def translateAnchor(self, spineId: str, x: int, y: int, first: bool) -> bool:
+    def moveAnchor(self, spineId: str, x: int, y: int, z: int, state: DragState = DragState.START) -> bool:
         """
-        Translates the anchor point of a spine by the given x and y coordinates.
+        Moves the anchor point of a spine to the given x and y coordinates.
 
         Args:
             spineId (str): The ID of the spine.
-            x (int): The x-coordinate of the translation.
-            y (int): The y-coordinate of the translation.
-            first (bool): Indicates whether the translation just started.
+            x (int): The x-coordinate of the cursor.
+            y (int): The y-coordinate of the cursor.
+            state (DragState): The state of the translation.
 
         Returns:
             bool: True if the anchor point was successfully translated, False otherwise.
@@ -101,62 +104,75 @@ class AnnotationsInteractions(AnnotationsBaseMut):
         anchor = self.nearestAnchor(point["segmentID"], Point(x, y))
 
         self.updateSpine(spineId, {
-            "z": anchor.z,
+            "anchorZ": anchor.z,
             "anchor": Point(anchor.x, anchor.y),
-        }, not first)
+        }, state != DragState.START)
 
         return True
 
     pendingBackgroundRoiTranslation = None
 
-    def translateBackgroundRoi(self, spineId: str, x: int, y: int, first: bool) -> bool:
+    def translateBackgroundRoi(self, spineId: str, x: int, y: int, z: int, state: DragState = DragState.START) -> bool:
         """
         Translates the background ROI for a given spine ID by the specified x and y offsets.
 
         Args:
             spineId (str): The ID of the spine.
-            x (int): The x-coordinate of the translation.
-            y (int): The y-coordinate of the translation.
+            x (int): The x-coordinate of the cursor.
+            y (int): The y-coordinate of the cursor.
+            state (DragState): The state of the translation.
 
         Returns:
             bool: True if the background ROI was successfully translated, False otherwise.
         """
         point = self._points.loc[spineId]
 
-        if first:
+        if self.pendingBackgroundRoiTranslation is None or state == DragState.START:
             self.pendingBackgroundRoiTranslation = [x, y]
 
         self.updateSpine(spineId, {
             "xBackgroundOffset": point["xBackgroundOffset"] + x - self.pendingBackgroundRoiTranslation[0],
             "yBackgroundOffset": point["yBackgroundOffset"] + y - self.pendingBackgroundRoiTranslation[1],
-        }, not first)
+        }, state != DragState.START)
 
         self.pendingBackgroundRoiTranslation = [x, y]
 
+        if state == DragState.END:
+            self.pendingBackgroundRoiTranslation = None
+
         return True
 
-    def translateRoiExtend(self, spineId: str, x: int, y: int, first: bool) -> bool:
+    def moveRoiExtend(self, spineId: str, x: int, y: int, z: int, state: DragState = DragState.START) -> bool:
         """
-        Translates the ROI extend for a given spine ID.
+        Move the ROI extend for a given spine ID.
+
+        Args:
+            spineId (str): The ID of the spine.
+            x (int): The x-coordinate of the cursor.
+            y (int): The y-coordinate of the cursor.
+            state (DragState): The state of the translation.
+
+        returns:
+            bool: True if the ROI extend was successfully translated, False otherwise.
         """
 
         point = self._points.loc[spineId, "point"]
 
         self.updateSpine(spineId, {
             "roiExtend": point.distance(Point(x, y))
-        }, not first)
+        }, state != DragState.START)
 
         return True
 
-    def translateSegmentRadius(self, segmentId: str, x: int, y: int, first: bool) -> bool:
+    def moveSegmentRadius(self, segmentId: str, x: int, y: int, z: int, state: DragState = DragState.START) -> bool:
         """
-        Translates the Radius of a segment by the given x and y coordinates.
+        Move the Radius of a segment by the given x and y coordinates.
 
         Args:
             segmentId (str): The ID of the segment.
-            x (int): The x-coordinate of the translation.
-            y (int): The y-coordinate of the translation.
-            first (bool): Indicates whether the translation just started.
+            x (int): The x-coordinate of the cursor.
+            y (int): The y-coordinate of the cursor.
+            state (DragState): The state of the translation.
 
         Returns:
             bool: True if the segment was successfully translated, False otherwise.
@@ -165,6 +181,6 @@ class AnnotationsInteractions(AnnotationsBaseMut):
         anchor = self.nearestAnchor(segmentId, Point(x, y), True)
         self.updateSegment(segmentId, {
             "radius": Point(anchor.x, anchor.y).distance(Point(x, y))
-        }, not first)
+        }, state != DragState.START)
 
         return True

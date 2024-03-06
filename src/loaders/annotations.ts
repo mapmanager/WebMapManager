@@ -8,11 +8,7 @@ import { Metadata, Point2d, Polygon2d, Spine } from "./metadata";
 import type { PixelSource } from "@vivjs/types/src/index";
 import { Color } from "@deck.gl/core/typed";
 import { ImageViewSelection } from "../components/plugins/ImageView";
-import {
-  AnnotationsOptions,
-  SegmentsAndSpinesResult,
-  pyImageSource,
-} from "../python";
+import { SegmentsAndSpinesResult, pyImageSource } from "../python";
 
 export interface ViewSelection {
   c: number;
@@ -206,8 +202,4 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
   public get scalerDimensions(): string[] {
     return this.spineStats;
   }
-
-  public abstract getSpineStats(
-    statNames?: (string | null)[]
-  ): Record<string, number | string>[];
 }

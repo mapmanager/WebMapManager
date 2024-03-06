@@ -1,5 +1,8 @@
 from io import StringIO
+from typing import Tuple
 import pandas as pd
+
+from ..store.image.base import ArrayImageLoader
 from .types import AnnotationsOptions, ImageSlice
 from ..store.image.pyodide import PyodideImageLoader
 from ..utils import toGeoData
@@ -12,7 +15,7 @@ class PyodideAnnotations(Annotations):
     async def load(url: str):
         lineSegments = await loadGeoCsv(url + "/line_segments.csv", ['segment'], index_col="segmentID", dtype={'segmentID': str})
         points = await loadGeoCsv(url + "/points.csv", ['point', 'anchor'], index_col="spineID", dtype={'spineID': str, 'segmentID': str})
-        loader = PyodideImageLoader(url)
+        loader = await ArrayImageLoader.loadTiffsFromUrl([[[url + "/t0/ch0.tif.br", url + "/t0/ch1.tif.br"]]])
         return PyodideAnnotations(loader, lineSegments, points)
 
     def getAnnotations_js(self, options: AnnotationsOptions):
@@ -23,7 +26,7 @@ class PyodideAnnotations(Annotations):
         layers = self.getAnnotations(options)
         return [layer.encodeBin() for layer in layers]
 
-    async def slices_js(self, time: int, channel: int, zRange: [int, int]) -> ImageSlice:
+    async def slices_js(self, time: int, channel: int, zRange: Tuple[int, int]) -> ImageSlice:
         """
         Loads the image data for a slice.
 

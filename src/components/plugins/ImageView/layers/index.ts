@@ -11,8 +11,9 @@ import { useEffect, useMemo } from "react";
 import {
   DATA_VERSION,
   FILTERS,
-  SELECTED_SEGMENT,
+  EDITING_SEGMENT,
   SELECTED_SPINE,
+  SELECTED_SEGMENT,
   dataChanged,
 } from "../../globals";
 import { AnnotationsOptions } from "../../../../python";
@@ -22,6 +23,7 @@ import { PyPixelSource } from "../../../../loaders/py_loader";
 import { PyProxy, TypedArray } from "pyodide/ffi";
 import { OutlinePathExtension } from "./outlineExtension";
 import { isShiftKeyDown } from "../../../utils";
+import { ImageViewSelection } from "..";
 
 export interface AnnotationsProps extends AnnotationsOptions {
   id: string;
@@ -33,15 +35,42 @@ const textSizeMinPixels = 10;
 const textSizeMaxPixels = 13;
 const AnnotationSelections = {
   segmentID: SELECTED_SEGMENT,
+  segmentIDEditing: EDITING_SEGMENT,
   spineID: SELECTED_SPINE,
 } as Record<string, Signal<string | undefined>>;
 
+enum State {
+  start = 0,
+  dragging = 1,
+  end = 2,
+}
+
 let dragging: string | undefined = undefined;
-let firstTranslate: boolean = true;
+let state: State = State.start;
 
 const INTERACTIONS = ["select", "edit"];
+let destroyOnDrop: (() => void) | undefined = undefined;
+let callOnZChange: ((z: number) => void) | undefined = undefined;
+const watchForZChanges = (
+  selectionSignal: Signal<ImageViewSelection>,
+  updateTranslation: (z: number) => void
+) => {
+  callOnZChange = updateTranslation;
+  if (destroyOnDrop) return;
+  const destroySub = selectionSignal.subscribe(({ z }) => {
+    if (callOnZChange) callOnZChange(z[0]);
+  });
 
-export function useAnnotations(options: AnnotationsProps): any[] {
+  destroyOnDrop = () => {
+    destroySub();
+    destroyOnDrop = undefined;
+  };
+};
+
+export function useAnnotations(
+  selectionSignal: Signal<ImageViewSelection>,
+  options: AnnotationsProps
+): any[] {
   const pendingEditVersion = DATA_VERSION.value;
 
   const {
@@ -57,12 +86,13 @@ export function useAnnotations(options: AnnotationsProps): any[] {
   } = options;
   const filters = FILTERS.value;
   const selectedSegment = SELECTED_SEGMENT.value;
+  const editingSegment = EDITING_SEGMENT.value;
   const selectedSpine = SELECTED_SPINE.value;
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Backspace") {
-        if (!SELECTED_SEGMENT.peek()) return;
+        if (!EDITING_SEGMENT.peek()) return;
         const spine = SELECTED_SPINE.peek();
         if (!spine) return;
         loader.deleteSpine(spine);
@@ -79,6 +109,7 @@ export function useAnnotations(options: AnnotationsProps): any[] {
     // console.time("getAnnotations_js");
     const annotationSelections = {
       segmentID: selectedSegment,
+      segmentIDEditing: editingSegment,
       spineID: selectedSpine,
     } as Record<string, string>;
 
@@ -139,7 +170,7 @@ export function useAnnotations(options: AnnotationsProps): any[] {
       const isLabel = properties.get("label") === true;
       const hasOffset = offset !== undefined;
       const hasOutline = outline !== undefined;
-      const translate = properties.get("translate");
+      const translate = properties.get("drag");
       const pickable =
         interactions.some((x) => x !== undefined) || translate !== undefined;
 
@@ -168,9 +199,10 @@ export function useAnnotations(options: AnnotationsProps): any[] {
         onDragStart: translate
           ? (pickingInfo, event) => {
               if (!pickingInfo.coordinate) return;
+              destroyOnDrop?.();
               dragging = layerId;
               event.stopImmediatePropagation();
-              firstTranslate = true;
+              state = State.start;
             }
           : undefined,
         onDrag: translate
@@ -180,9 +212,14 @@ export function useAnnotations(options: AnnotationsProps): any[] {
               if (dragging !== layerId || !pickingInfo.coordinate || !id)
                 return;
               let [x, y] = pickingInfo.coordinate!;
-              if (translate(id, x, y, firstTranslate)) dataChanged();
+              const z = Math.trunc((selection.z[1] + selection.z[0]) / 2);
+              watchForZChanges(selectionSignal, (z) =>
+                translate(id, x, y, z, state)
+              );
+              if (translate(id, x, y, z, state))
+                dataChanged();
 
-              firstTranslate = false;
+              state = State.dragging;
               event.stopImmediatePropagation();
             }
           : undefined,
@@ -192,10 +229,13 @@ export function useAnnotations(options: AnnotationsProps): any[] {
                 .properties[pickingInfo.index]?.id;
               if (dragging !== layerId || !id) return;
               let [x, y] = pickingInfo.coordinate! ?? [0, 0];
-              if (translate(id, x, y, firstTranslate)) dataChanged();
-              firstTranslate = false;
+              const z = Math.trunc((selection.z[1] + selection.z[0]) / 2);
+              state = State.end;
+              if (translate(id, x, y, z, state))
+                dataChanged();
               event.stopImmediatePropagation();
               dragging = undefined;
+              destroyOnDrop?.();
             }
           : undefined,
         getFillColor: getFeature(properties, "fill", true) || [0, 0, 0, 0],
@@ -216,10 +256,15 @@ export function useAnnotations(options: AnnotationsProps): any[] {
         textSizeMinPixels,
         getOffset:
           offset instanceof py.ffi.PyCallable
-            ? (x: Feature<Geometry, GeoJsonProperties>) => offset(x.properties?.id)
+            ? (x: Feature<Geometry, GeoJsonProperties>) =>
+                offset(x.properties?.id)
             : offset,
-        getDashArray: hasOffset ? [6, 6] : undefined,
-        getOutlineWidth: outline,
+        // getDashArray: hasOffset ? [6, 6] : undefined,
+        getOutlineWidth:
+          outline instanceof py.ffi.PyCallable
+            ? (x: Feature<Geometry, GeoJsonProperties>) =>
+                outline(x.properties?.id)
+            : outline,
         extensions: hasOffset
           ? [
               new PathStyleExtension({
@@ -262,6 +307,7 @@ export function useAnnotations(options: AnnotationsProps): any[] {
     showSpines,
     filters,
     selectedSegment,
+    editingSegment,
     selectedSpine,
     visible,
     pendingEditVersion,
@@ -399,7 +445,7 @@ function getFeature(
       setOpacity(toJs(value(x.properties?.id)), opacity);
   }
 
-  value = toJs(properties.get(key));
+  value = toJs(value);
   if (!value) return undefined;
 
   const opacity = hasOpacity ? properties.get("opacity") : undefined;

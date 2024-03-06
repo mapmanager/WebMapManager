@@ -19,7 +19,7 @@ globalThis.py = await window.loadPyodide({}).then(async (py) => {
   const r = (require as any).context("./coreMapManager", true, /\.py$/);
   for (const key of r.keys()) {
     const content = r(key);
-    const path = "./coreMapManager" + key.slice(1) as string;
+    const path = ("./coreMapManager" + key.slice(1)) as string;
     createAllParentDirs(path);
 
     py.FS.writeFile(path, content, {
@@ -71,6 +71,14 @@ export interface pyImageSource {
   bins(nBin?: number): [counts: number, means: number][];
 }
 
+export interface pyQuery {
+  getTitle(): string;
+  isCategorical(): boolean;
+}
+
+export type pdSeries = any;
+export type pdDataFrame = any;
+
 export interface pyPixelSource {
   slices_js(
     time: number,
@@ -92,10 +100,15 @@ export interface pyPixelSource {
     filters?: Set<string> | undefined;
     showAll?: boolean;
   }): SegmentsAndSpinesResult;
+
   getSpinePosition(
     t: number,
     spineID: string
   ): [x: number, y: number, z: number] | undefined;
+
+  queries(): any;
+  runQuery(query: pyQuery): Promise<pdSeries>;
+  table(): Promise<pdDataFrame>;
 
   undo(): void;
   redo(): void;

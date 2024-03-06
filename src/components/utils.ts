@@ -3,6 +3,7 @@ import { ViewSelection } from "../loaders/annotations";
 import { PyPixelSource } from "../loaders/py_loader";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
 import {
+  EDITING_SEGMENT,
   SELECTED_SEGMENT,
   SELECTED_SPINE,
   setFilters,
@@ -23,11 +24,12 @@ window.addEventListener(
     isAltKeyDown = event.altKey;
     isShiftKeyDown = event.shiftKey;
     if (event.key === "Escape") {
-      if (SELECTED_SEGMENT.peek() && SELECTED_SPINE.peek()) {
+      if (EDITING_SEGMENT.peek() && SELECTED_SPINE.peek()) {
         SELECTED_SPINE.value = undefined;
         return;
       }
       SELECTED_SPINE.value = undefined;
+      EDITING_SEGMENT.value = undefined;
       SELECTED_SEGMENT.value = undefined;
       setFilters(undefined);
     }

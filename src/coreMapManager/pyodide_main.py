@@ -3,7 +3,6 @@ from .annotations.pyodide import PyodideAnnotations
 
 warnings.filterwarnings("ignore")
 
-
 async def createAnnotations(url: str) -> PyodideAnnotations:
     """
     Creates a new annotation object source using Pyodide.

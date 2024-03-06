@@ -1,9 +1,10 @@
 import inspect
 import numpy as np
-from shapely.geometry import MultiPoint, LineString, Point, Polygon, MultiLineString,MultiPolygon
+from shapely.geometry import MultiPoint, LineString, Point, Polygon, MultiLineString, MultiPolygon
 import shapely
 from .layer import Layer
 from ..benchmark import timer
+
 
 def getCoords(shape):
     if isinstance(shape, Point):
@@ -18,6 +19,8 @@ def getCoords(shape):
         return [shape.exterior.coords]
     if isinstance(shape, MultiPolygon):
         return [poly.exterior.coords for poly in shape.geoms]
+    return shape
+
 
 @timer
 def dropZPoint(x, y, z=None):
@@ -27,8 +30,8 @@ def dropZPoint(x, y, z=None):
 # TODO: replace with shapely vectorized
 @timer
 def dropZ(shape):
-    if isinstance(shape, LineString): 
-        return LineString((x,y) for x,y,z in shape.coords)
+    if isinstance(shape, LineString):
+        return LineString((x, y) for x, y, z in shape.coords)
     return shapely.ops.transform(dropZPoint, shape)
 
 
@@ -43,6 +46,7 @@ def Sourced(func):
         layer.source(func.__name__, dependencies)
         return layer
     return sourced
+
 
 def roundPoint(point: Point, ndig=0):
     return Point(round(point.x, ndig), round(point.y, ndig), round(point.z, ndig))

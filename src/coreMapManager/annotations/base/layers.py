@@ -1,5 +1,7 @@
 import warnings
 import geopandas as gp
+
+from ...config import COLORS, CONFIG, TRANSPARENT
 from ..types import AnnotationsOptions
 from ...layers import LineLayer, PointLayer, Layer
 from ...layers.utils import dropZ
@@ -10,6 +12,7 @@ from .interactions import AnnotationsInteractions
 from typing import List, Tuple
 from typing import List
 from ...layers.layer import Layer
+from typing import List
 
 
 class AnnotationsLayers(AnnotationsInteractions):
@@ -32,12 +35,16 @@ class AnnotationsLayers(AnnotationsInteractions):
             layers = []
 
             zRange = options["selection"]["z"]
+            selections = options["annotationSelections"]
+
             if options["showLineSegments"]:
                 layers.extend(self._getSegments(
-                    zRange, options["annotationSelections"]["segmentID"], options["showLineSegmentsRadius"]))
+                    zRange, selections["segmentIDEditing"], selections["segmentID"], options["showLineSegmentsRadius"]))
 
             if options["showSpines"]:
                 layers.extend(self._getSpines(options))
+
+            layers = [layer for layer in layers if not layer.empty()]
 
             return layers
 
@@ -46,31 +53,78 @@ class AnnotationsLayers(AnnotationsInteractions):
         zRange = options["selection"]["z"]
         selections = options["annotationSelections"]
         selectedSpine = selections["spineID"]
-        editingSegmentId = selections["segmentID"]
+        editingSegmentId = selections["segmentIDEditing"]
         editing = editingSegmentId is not None
         # index_filter = options["filters"]
 
         layers = []
         if editing:
-            visible_mask = self._points["segmentID"] == editingSegmentId
-            not_faded = self._points[visible_mask]["z"].between(
-                zRange[0], zRange[1])
+            # only show selected points
+            points = self._points[self._points["segmentID"]
+                                  == editingSegmentId]
         else:
-            visible_mask = self._points["z"].between(zRange[0], zRange[1])
-            not_faded = None
+            points = self._points
 
-        points = self._points[visible_mask]
+        visiblePoints = points["z"].between(
+            zRange[0], zRange[1], inclusive="left")
+        visibleAnchors = points["anchorZ"].between(
+            zRange[0], zRange[1], inclusive="left")
+
+        if not editing:
+            points = points[visiblePoints | visibleAnchors]
 
         if len(points) == 0:
             return layers
 
-        if not_faded is None:
-            layers.extend(self._appendPointLayers(options, points))
+        spines = (PointLayer(points["point"])
+                  .id("spine")
+                  .on("select", "spineID")
+                  .fill(lambda id: COLORS["spine"] if id == selectedSpine else COLORS["selectedSpine"]))
+
+        labels = None
+        if options["showAnchors"] or options["showLabels"]:
+            anchorLines = (spines
+                           .copy(id="anchorLine")
+                           .toLine(points["anchor"])
+                           .stroke(COLORS["anchorLine"]))
+
+            if options["showLabels"]:
+                labels = (anchorLines
+                          .copy(id="label")
+                          .extend(CONFIG["labelOffset"])
+                          .tail()
+                          .label()
+                          .fill(COLORS["label"]))
+
+            if options["showAnchors"]:
+                layers.extend(anchorLines.splitGhost(
+                    visiblePoints & visibleAnchors, opacity=CONFIG["ghostOpacity"]))
+
+                anchors = (PointLayer(points["anchor"]).id("anchor")
+                           .fill(COLORS["anchorPoint"]))
+                if editing:
+                    anchors = (anchors.onDrag(self.moveAnchor)
+                               .radius(CONFIG["pointRadiusEditing"]))
+                else:
+                    anchors = anchors.radius(CONFIG["pointRadius"])
+
+                layers.extend(anchors.splitGhost(
+                    visibleAnchors, opacity=CONFIG["ghostOpacity"]))
+
+        if editing:
+            spines = (spines.onDrag(self.moveSpine)
+                      .radius(CONFIG["pointRadiusEditing"]))
         else:
-            layers.extend(self._appendPointLayers(
-                options, points[not_faded], True))
-            for layer in self._appendPointLayers(options, points[~not_faded], True):
-                layers.append(layer.opacity(255*0.5).copy(id="ghost"))
+            spines = spines.radius(CONFIG["pointRadius"])
+
+        # partially show spines that are not in scope with anchors in scope
+        layers.extend(spines.splitGhost(
+            visiblePoints, opacity=CONFIG["ghostOpacity"]))
+
+        # render labels
+        if options["showLabels"]:
+            layers.extend(labels.splitGhost(
+                visiblePoints, opacity=CONFIG["ghostOpacity"]))
 
         if selectedSpine in self._points.index:
             self._appendRois(
@@ -78,95 +132,60 @@ class AnnotationsLayers(AnnotationsInteractions):
 
         return layers
 
-    def _appendPointLayers(self, options: AnnotationsOptions, points: gp.GeoDataFrame, editing=False):
-        layers = []
-        selectedSpine = options["annotationSelections"]["spineID"]
-        spines = (PointLayer(points["point"])
-                  .id("spine")
-                  .on("select", "spineID")
-                  .fill(lambda id: [0, 255, 255] if id == selectedSpine else [255, 0, 0]))
-
-        anchorLines = None
-        if options["showAnchors"] or options["showLabels"]:
-            anchorLines = (spines
-                           .copy(id="anchorLine")
-                           .toLine(points["anchor"])
-                           .stroke([0, 0, 255]))
-
-            if options["showAnchors"]:
-                layers.append(anchorLines)
-                if editing:
-                    layers.append(PointLayer(points["anchor"])
-                                  .id("anchor")
-                                  .onTranslate(self.translateAnchor)
-                                  .fill([0, 0, 255])
-                                  .radius(5))
-
-        if editing:
-            layers.append(spines.onTranslate(self.translateSpine).radius(5))
-        else:
-            layers.append(spines.radius(2))
-
-        # render labels
-        if options["showLabels"]:
-            layers.append(anchorLines
-                          .copy(id="label")
-                          .extend(6)
-                          .tail()
-                          .label()
-                          .fill([255, 255, 255]))
-
-        return layers
-
     @timer
     def _appendRois(self, spineDf: gp.GeoDataFrame, editing: bool, layers: List[Layer]):
-        boarderWidth = 0.5
-        outline = 4 / boarderWidth
+        boarderWidth = CONFIG["roiStrokeWidth"]
+        segments = spineDf[["anchor", "segmentID"]].join(
+            self._lineSegments[["segment", "radius"]], on="segmentID",)
+
+        def radius(id):
+            return segments.loc[id, "radius"]
+
+        def outline(id):
+            return radius(id) / boarderWidth
+
         headLayer = (PointLayer(spineDf["point"])
                      .id("roi-head")
                      .toLine(spineDf["anchor"])
                      .extend(spineDf["roiExtend"])
                      .outline(outline)
                      .strokeWidth(boarderWidth)
-                     .stroke([255, 255, 0]))
+                     .stroke(COLORS["roiHead"]))
 
-        segments = spineDf.join(
-            self._lineSegments[["segment", "radius"]], on="segmentID",)
         baseLayer = (LineLayer.createSubLine(segments, 8, "segment", "anchor")
                      .id("roi-base")
-                     #  .simplify(0.8)
                      .outline(outline)
                      .strokeWidth(boarderWidth)
-                     .stroke([255, 100, 0]))
+                     .stroke(COLORS["roiBase"]))
 
         offset = spineDf[["xBackgroundOffset", "yBackgroundOffset"]]
         backgroundRoiHead = (headLayer
                              .copy(id="background")
                              .translate(offset)
-                             .stroke([255, 255, 255]))
+                             .stroke(COLORS["roiHeadBg"]))
 
         backgroundRoiBase = (baseLayer
                              .copy(id="background")
                              .translate(offset)
-                             .stroke([255, 100, 255]))
+                             .stroke(COLORS["roiBaseBg"]))
         if editing:
-            # Add interaction targets
+            # Add larger interaction targets
             layers.append(backgroundRoiHead.copy(id="translate")
                           .outline(None)
-                          .strokeWidth(4)
-                          .stroke([0, 0, 0, 0])
+                          .strokeWidth(radius)
+                          .stroke(TRANSPARENT)
                           .fixed()
-                          .onTranslate(self.translateBackgroundRoi))
+                          .onDrag(self.translateBackgroundRoi))
             layers.append(backgroundRoiBase.copy(id="translate")
                           .outline(None)
-                          .strokeWidth(4)
-                          .stroke([0, 0, 0, 0])
+                          .strokeWidth(radius)
+                          .stroke(TRANSPARENT)
                           .fixed()
-                          .onTranslate(self.translateBackgroundRoi))
+                          .onDrag(self.translateBackgroundRoi))
 
-            backgroundRoiHead = backgroundRoiHead.onTranslate(
+            backgroundRoiHead = backgroundRoiHead.onDrag(
                 self.translateBackgroundRoi)
-            backgroundRoiBase = backgroundRoiBase.onTranslate(
+            backgroundRoiBase = backgroundRoiBase.onDrag(
                 self.translateBackgroundRoi)
 
         layers.append(backgroundRoiHead)
@@ -178,25 +197,26 @@ class AnnotationsLayers(AnnotationsInteractions):
             # Add the extend interaction target
             layers.append(headLayer.copy(id="translate-extend")
                           .outline(None)
-                          .strokeWidth(outline * boarderWidth)
+                          .strokeWidth(lambda id: outline(id) * boarderWidth)
                           .subLine(1)
-                          .stroke([0, 255, 0])
-                          .onTranslate(self.translateRoiExtend)
+                          .stroke(COLORS["intractable"])
+                          .onDrag(self.moveRoiExtend)
                           .fixed())
 
     @timer
-    def _getSegments(self, zRange: Tuple[int, int], editSegId: str, showLineSegmentsRadius: bool):
+    def _getSegments(self, zRange: Tuple[int, int], editSegId: str, selectedSegId: str, showLineSegmentsRadius: bool) -> List[Layer]:
         layers = []
 
         segment = (LineLayer(self._lineSegments["segment"])
                    .id("segment")
                    .clipZ(zRange)
-                   .on("edit", "segmentID")
-                   .stroke(lambda id: [0, 255, 0] if id == editSegId else [255, 0, 0]))
+                   .on("edit", "segmentIDEditing")
+                   .stroke(lambda id: COLORS["segmentSelected"] if id == selectedSegId else (COLORS["segmentEditing"] if id == editSegId else COLORS["segment"])))
 
-        boarderWidth = 0.5
-        def offset(
-            id): return self._lineSegments.loc[id, "radius"] / boarderWidth
+        boarderWidth = CONFIG["segmentLeftRightStrokeWidth"]
+
+        def offset(id: str):
+            return self._lineSegments.loc[id, "radius"] / boarderWidth
 
         # Render the ghost of the edit
         if editSegId is not None:
@@ -218,26 +238,27 @@ class AnnotationsLayers(AnnotationsInteractions):
             layers.append(right)
 
             if editSegId:
-                left = left.onTranslate(self.translateSegmentRadius)
-                right = right.onTranslate(self.translateSegmentRadius)
+                left = left.onDrag(self.moveSegmentRadius)
+                right = right.onDrag(self.moveSegmentRadius)
 
         if editSegId is None:
             # Make the click target larger
             layers.append(segment.copy(id="interaction")
                           .strokeWidth(lambda id: self._lineSegments.loc[id, "radius"])
-                          .stroke([0, 0, 0, 0])
+                          .stroke(TRANSPARENT)
                           .fixed())
 
         # Add the line segment
         layers.append(segment.strokeWidth(
-            lambda id: 4 if id == editSegId else 2))
+            lambda id: CONFIG["segmentBoldWidth"] if id == editSegId else CONFIG["segmentWidth"]))
 
         return layers
 
-    def _segmentGhost(self, segId, showLineSegmentsRadius, layers, segment, boarderWidth, offset):
+    def _segmentGhost(self, segId: str, showLineSegmentsRadius: bool, layers: List[Layer], segment: LineLayer, boarderWidth: int, offset: int):
         segmentSeries = self._lineSegments.loc[[segId], "segment"]
         segmentSeries = segmentSeries.apply(dropZ)
-        ghost = segment.copy(segmentSeries, id="ghost").opacity(255 * 0.5)
+        ghost = (segment.copy(segmentSeries, id="ghost")
+                 .opacity(CONFIG["ghostOpacity"]))
 
         if showLineSegmentsRadius:
             # Ghost Left line
