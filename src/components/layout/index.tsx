@@ -118,11 +118,16 @@ export default function Layout<Props>(props: Props) {
           factory={factory}
           onRenderTabSet={onRenderTabSet}
           titleFactory={titleFactory}
+          onTabSetPlaceHolder={onTabSetPlaceHolder}
         />
       </ImageViewerRoot>
     </div>
   );
 }
+
+const onTabSetPlaceHolder = (node: FlexLayout.TabSetNode) => (
+  <div className="placeholder" />
+);
 
 /**
  * A container for the tab component.

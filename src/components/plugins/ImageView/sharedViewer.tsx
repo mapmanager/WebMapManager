@@ -214,7 +214,10 @@ export const ImageViewerRoot = ({
   }, [viewsProps, viewStates, loader]);
 
   const viewStatesArr = useComputed(() => [
-    ...Object.values(viewStates.value),
+    ...Object.entries(viewStates.value).map(([id, viewState]: any) => {
+      viewState.id = id;
+      return viewState;
+    }),
   ]) as any;
 
   return (
@@ -228,9 +231,8 @@ export const ImageViewerRoot = ({
           getTooltip,
         }}
         onViewStateChange={(args: any) => {
-          const { viewState, viewId } = args;
+          const { viewState, viewId, oldViewState } = args;
           const state = viewStates.peek();
-          const priorState = state[viewId];
 
           // Restrict zoom
           if (viewState.zoom > MAX_ZOOM || viewState.zoom < MIN_ZOOM) {
@@ -238,10 +240,9 @@ export const ImageViewerRoot = ({
               Math.min(viewState.zoom, MAX_ZOOM),
               MIN_ZOOM
             );
-            viewState.target = priorState.target || [];
+            viewState.target = oldViewState.target ?? [];
           }
 
-          viewState.targetSpine = priorState.targetSpine;
           state[viewId] = viewState;
 
           // Propagate changes from the overview

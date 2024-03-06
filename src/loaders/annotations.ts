@@ -8,11 +8,7 @@ import { Metadata, Point2d, Polygon2d, Spine } from "./metadata";
 import type { PixelSource } from "@vivjs/types/src/index";
 import { Color } from "@deck.gl/core/typed";
 import { ImageViewSelection } from "../components/plugins/ImageView";
-import {
-  AnnotationsOptions,
-  SegmentsAndSpinesResult,
-  pyImageSource,
-} from "../python";
+import { SegmentsAndSpinesResult, pyImageSource } from "../python";
 
 export interface ViewSelection {
   c: number;
@@ -83,7 +79,6 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
   // @ts-ignore: Selection should be converted to src type prior to calling super.
   abstract getTile(sel: RasterSelection): Promise<PixelData>;
 
-  abstract getAnnotationsGeoJson(options?: AnnotationsOptions): string[];
   abstract source(selection: ViewSelection): Promise<pyImageSource | undefined>;
 
   static selectedZRange(selection: ViewSelection): [low: number, high: number] {
@@ -207,8 +202,4 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
   public get scalerDimensions(): string[] {
     return this.spineStats;
   }
-
-  public abstract getSpineStats(
-    statNames?: (string | null)[]
-  ): Record<string, number | string>[];
 }

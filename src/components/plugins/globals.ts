@@ -2,6 +2,11 @@ import { signal } from "@preact/signals-react";
 import { isAltKeyDown, isShiftKeyDown } from "../utils";
 
 /**
+ * Global signal to track which segment is being edited.
+ */
+export const EDITING_SEGMENT = signal<string | undefined>(undefined);
+
+/**
  * Global signal to track which segment is selected.
  */
 export const SELECTED_SEGMENT = signal<string | undefined>(undefined);
@@ -16,6 +21,16 @@ export const SELECTED_SPINE = signal<string | undefined>(undefined);
  * Set of spine ids
  */
 export const FILTERS = signal<Set<string> | undefined>(undefined);
+
+/**
+ * Global signal tracks which spines are selected as part of a filter.
+ * Set of spine ids
+ */
+export const DATA_VERSION = signal<number>(0);
+
+export const dataChanged = () => {
+  DATA_VERSION.value = DATA_VERSION.peek() + 1;
+};
 
 /**
  * Updates the filter merging them depending on the selected shortcut

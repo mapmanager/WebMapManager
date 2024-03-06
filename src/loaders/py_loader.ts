@@ -9,11 +9,15 @@ import {
   AnnotationsOptions,
   SegmentsAndSpinesResult,
   newPixelSource,
+  pdDataFrame,
+  pdSeries,
   pyImageSource,
   pyPixelSource,
+  pyQuery,
 } from "../python";
 import { SIGNAL_ABORTED } from "@hms-dbmi/viv";
 import { ImageViewSelection } from "../components/plugins/ImageView";
+import type { PyProxy } from "pyodide/ffi";
 
 export class PyPixelSource extends AnnotatedPixelSource {
   #proxy: pyPixelSource;
@@ -48,7 +52,7 @@ export class PyPixelSource extends AnnotatedPixelSource {
           };
         } else {
           (selection.selection as any).raster = {
-            data: src.data(),
+            data: src.data().toJs(),
             width: this.tileSize,
             height: this.tileSize,
           };
@@ -71,7 +75,7 @@ export class PyPixelSource extends AnnotatedPixelSource {
 
       // Don't fetch empty/disabled channels
       if (len <= 0) return undefined;
-      (selection as any).src = await this.#proxy.slices(t, c, low, high);
+      (selection as any).src = await this.#proxy.slices_js(t, c, [low, high]);
     }
     return (selection as any).src;
   }
@@ -92,8 +96,8 @@ export class PyPixelSource extends AnnotatedPixelSource {
     return this.#empty;
   }
 
-  getAnnotationsGeoJson(options?: AnnotationsOptions): string[] {
-    return this.#proxy.getAnnotationsGeoJson(options);
+  getAnnotations(options?: AnnotationsOptions): PyProxy[] {
+    return this.#proxy.getAnnotations_js(options);
   }
 
   getSegmentsAndSpines(
@@ -108,20 +112,43 @@ export class PyPixelSource extends AnnotatedPixelSource {
     });
   }
 
+  undo() {
+    this.#proxy.undo();
+  }
+
+  redo() {
+    this.#proxy.redo();
+  }
+
   public getSpinePosition(
     t: number,
     spineID: string
   ): [x: number, y: number, z: number] | undefined {
-    return this.#proxy.getSpinePosition({
-      t,
-      spineID,
-    });
+    return this.#proxy.getSpinePosition(t, spineID);
   }
 
+  public queries(): pyQuery[] {
+    return this.#proxy.queries().toJs();
+  }
 
-  public getSpineStats(
-    statNames?: (string | null)[] | undefined
-  ): Record<string, string | number>[] {
-    throw new Error("Method not implemented.");
+  public async runQuery(query: pyQuery): Promise<pdSeries> {
+    return this.#proxy.runQuery(query);
+  }
+
+  public async table(): Promise<pdDataFrame> {
+    return this.#proxy.table();
+  }
+
+  public addSpine(
+    segmentId: string,
+    x: number,
+    y: number,
+    z: number
+  ): string | undefined {
+    return this.#proxy.addSpine(segmentId, x, y, z);
+  }
+
+  public deleteSpine(spineId: string) {
+    this.#proxy.deleteSpine(spineId);
   }
 }
