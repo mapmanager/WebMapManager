@@ -7,7 +7,7 @@ import { CustomProvider } from "rsuite";
 import { dataChanged } from "./components/plugins/globals";
 
 function App() {
-  const { loader, loading, error } = useImageLoader("/api/data/rr30a_s0u/");
+  const { loader, loading, error } = useImageLoader("/api/data/rr30a_s0u.mmap");
   useEffect(() => {
     if (!loader) return;
 

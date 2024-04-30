@@ -7,7 +7,7 @@ import { Data, PlotMouseEvent, ScatterData } from "plotly.js";
 import { FILTERS, SELECTED_SPINE, setFilters } from "./globals";
 import { VisibilityControl } from "../Visibility";
 import { extent, scaleLinear, scaleOrdinal, schemeCategory10 } from "d3";
-import { pyQuery } from "../../python";
+import { ColumnAttributes, pyQuery } from "../../python";
 import { useAsync } from "react-use";
 
 const styles = {
@@ -18,14 +18,14 @@ const styles = {
 
 const updateSelected = (event: Readonly<PlotMouseEvent>) => {
   for (const point of event.points) {
-    SELECTED_SPINE.value = point.text;
+    SELECTED_SPINE.value = parseInt(point.text);
     return;
   }
 };
 
 const addPointsToFilter = (event: Readonly<Plotly.PlotSelectionEvent>) => {
   if (!event || (!event.range && !event.lassoPoints)) return;
-  setFilters(event.points.map(({ text }) => text));
+  setFilters(event.points.map(({ text }) => parseInt(text)));
 };
 
 const clearFilter = () => {
@@ -33,40 +33,39 @@ const clearFilter = () => {
 };
 
 function useQueryState(
-  queries: Record<string, pyQuery>,
+  attributes: Record<string, ColumnAttributes>,
   key: string
-): [pyQuery, (key: string) => void];
+): [ColumnAttributes, (key: string) => void];
 function useQueryState(
-  queries: Record<string, pyQuery>,
+  attributes: Record<string, ColumnAttributes>,
   key: string | null
-): [pyQuery | null, (key: string) => void];
+): [ColumnAttributes | null, (key: string) => void];
 function useQueryState(
-  queries: Record<string, pyQuery>,
+  attributes: Record<string, ColumnAttributes>,
   key: string | null
-): [pyQuery | null, (key: string) => void] {
+): [ColumnAttributes | null, (key: string) => void] {
   const [keyState, setkeyState] = useState(key);
-  return [keyState ? queries[keyState] : null, setkeyState];
+  return [keyState ? attributes[keyState] : null, setkeyState];
 }
 
 export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
-  const [queries, names] = useMemo(() => {
-    const obj = Object.create(null);
-    const names = [] as { label: string; value: string }[];
-    loader.queries().forEach((query, index) => {
-      const title = query.getTitle();
-      obj[title] = query;
-      names.push({ label: `${index + 1}. ${title}`, value: title });
-    });
-
-    return [obj, names];
+  const [attributes, names] = useMemo(() => {
+    const attributes = loader.columnsAttributes();
+    const names = Object.entries(attributes)
+      .filter(([_, attribute]) => attribute.title && attribute.plot)
+      .map(([key, attribute]) => ({
+        label: attribute.title,
+        value: key,
+      }));
+    return [attributes, names];
   }, [loader]);
 
-  const [xAxis, setXAxis] = useQueryState(queries, "x");
-  const [yAxis, setYAxis] = useQueryState(queries, "y");
-  const [zAxis, setZAxis] = useQueryState(queries, null);
-  const [scaleOn, setScaleOn] = useQueryState(queries, null);
+  const [xAxis, setXAxis] = useQueryState(attributes, "x");
+  const [yAxis, setYAxis] = useQueryState(attributes, "y");
+  const [zAxis, setZAxis] = useQueryState(attributes, null);
+  const [scaleOn, setScaleOn] = useQueryState(attributes, null);
   const [segment, setSegment] = useState(null);
-  const [colorOn, setColorOn] = useQueryState(queries, "Segment ID");
+  const [colorOn, setColorOn] = useQueryState(attributes, "Segment ID");
 
   // // TODO: SIZE ON SCALER
   // // TODO: COLOR ON Categorical & Numeric spectrum data.
@@ -85,15 +84,14 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
 
   const useQuery = (
     loader: PluginProps["loader"],
-    query: pyQuery | null
+    attributes: ColumnAttributes | null
   ): number[] | string[] | null => {
-    const value = useAsync(async () => {
-      if (!query) return null;
-      return (await loader.runQuery(query)).tolist().toJs();
-    }, [loader, query]);
+    const value = useMemo(() => {
+      if (!attributes) return null;
+      return loader.getColumn(attributes.key);
+    }, [loader, attributes]);
 
-    loading ||= value.loading;
-    return value.value;
+    return value;
   };
 
   const colorsValues = (useQuery(loader, colorOn) as string[]) ?? [];
@@ -101,8 +99,8 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
     .domain([...new Set(colorsValues)] as any)
     .range(schemeCategory10);
 
-  const ids = useQuery(loader, queries["Spine ID"]) ?? [];
-  const segmentIds = useQuery(loader, queries["Segment ID"]) ?? [];
+  const ids = useQuery(loader, attributes["spineID"]) ?? [];
+  const segmentIds = useQuery(loader, attributes["segmentID"]) ?? [];
   const scaleOnValues = useQuery(loader, scaleOn);
   const size =
     scaleOnValues == null
@@ -124,8 +122,10 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
   } as ScatterData;
   const globalSelection = SELECTED_SPINE.value;
 
-  const hovertemplate = `<b>Spine Id - %{text}</b><br><b>${xAxis.getTitle()}</b> %{x}<br><b>${yAxis.getTitle()}</b> %{y}<br>${
-    zAxis ? `<b>${zAxis!.getTitle()}</b> %{z}<br>` : ""
+  const hovertemplate = `<b>Spine Id - %{text}</b><br><b>${
+    xAxis.title
+  }</b> %{x}<br><b>${yAxis.title}</b> %{y}<br>${
+    zAxis ? `<b>${zAxis!.title}</b> %{z}<br>` : ""
   }<extra></extra>`;
 
   const data: Data[] = [
@@ -216,7 +216,7 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
               <SelectPicker
                 label="x"
                 cleanable={false}
-                value={xAxis.getTitle()}
+                value={xAxis.title}
                 style={styles}
                 data={names}
                 onChange={setXAxis as any}
@@ -224,7 +224,7 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
               <SelectPicker
                 label="y"
                 cleanable={false}
-                value={yAxis.getTitle()}
+                value={yAxis.title}
                 style={styles}
                 data={names}
                 onChange={setYAxis as any}
@@ -232,7 +232,7 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
               <SelectPicker
                 label="z"
                 cleanable={true}
-                value={zAxis?.getTitle()}
+                value={zAxis?.title}
                 style={styles}
                 data={names}
                 onChange={setZAxis as any}
@@ -242,7 +242,7 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
               <SelectPicker
                 label="Size"
                 cleanable={true}
-                value={scaleOn?.getTitle()}
+                value={scaleOn?.title}
                 style={styles}
                 data={names}
                 onChange={setScaleOn as any}

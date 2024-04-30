@@ -1,7 +1,8 @@
 import { PyProxy } from "pyodide/ffi";
-import { ImageViewSelection } from "./components/plugins/ImageView";
+import { ZRange } from "./components/plugins/ImageView";
 // @ts-ignore
 import requirements from "./MapManagerCore/requirements.json";
+import { Metadata } from "./loaders/metadata";
 
 // Load python
 globalThis.py = await window.loadPyodide({}).then(async (py) => {
@@ -16,10 +17,14 @@ globalThis.py = await window.loadPyodide({}).then(async (py) => {
   }
 
   // preloads all python files in the py dir to pyodide.
-  const r = (require as any).context("./MapManagerCore/MapManagerCore", true, /\.py$/);
+  const r = (require as any).context(
+    "./MapManagerCore/mapmanagercore",
+    true,
+    /\.py$/
+  );
   for (const key of r.keys()) {
     const content = r(key);
-    const path = ("./MapManagerCore" + key.slice(1)) as string;
+    const path = ("./mapmanagercore" + key.slice(1)) as string;
     createAllParentDirs(path);
 
     py.FS.writeFile(path, content, {
@@ -44,9 +49,9 @@ globalThis.py = await window.loadPyodide({}).then(async (py) => {
 });
 
 export interface AnnotationsOptions {
-  filters?: Set<string>;
-  selection: ImageViewSelection;
-  annotationSelections: Record<string, string | undefined>;
+  filters?: Set<number>;
+  zRange: ZRange;
+  annotationSelections: Record<string, number | undefined>;
 
   // View toggles
   showLineSegments?: boolean;
@@ -79,35 +84,51 @@ export interface pyQuery {
 export type pdSeries = any;
 export type pdDataFrame = any;
 
-export interface pyPixelSource {
-  slices_js(
-    time: number,
-    channel: number,
-    zRange: [number, number]
-  ): Promise<pyImageSource>;
-  getAnnotations_js(options?: AnnotationsOptions): PyProxy[];
+export interface ColumnAttributes {
+  title: string;
+  categorical: boolean;
+  divergent: boolean;
+  description: string;
+  key: string;
+  plot: boolean;
+}
 
-  deleteSpine(spineId: string): void;
+export interface pyPixelSourceTimePoint {
+  getAnnotations_js(options?: AnnotationsOptions): PyProxy[];
+  metadata_json(): string;
+  slices_js(channel: number, zRange: [number, number]): Promise<pyImageSource>;
+  deleteSpine(spineId: number): void;
+
   addSpine(
-    segmentId: string,
+    segmentId: number,
     x: number,
     y: number,
     z: number
-  ): string | undefined;
+  ): number | undefined;
 
   getSegmentsAndSpines(options: {
-    selection: ImageViewSelection;
-    filters?: Set<string> | undefined;
+    zRange: ZRange;
+    filters?: Set<number> | undefined;
     showAll?: boolean;
   }): SegmentsAndSpinesResult;
 
   getSpinePosition(
-    t: number,
-    spineID: string
+    spineID: number
   ): [x: number, y: number, z: number] | undefined;
 
-  queries(): any;
-  runQuery(query: pyQuery): Promise<pdSeries>;
+  columnsAttributes_json(): string;
+  getColumn(name: string): Promise<pdSeries>;
+  table(): Promise<pdDataFrame>;
+
+  undo(): void;
+  redo(): void;
+}
+
+export interface pyPixelSource {
+  timePoint_js(timePoint: number): pyPixelSourceTimePoint;
+
+  columnsAttributes_json(): string;
+  getColumn(name: string): Promise<pdSeries>;
   table(): Promise<pdDataFrame>;
 
   undo(): void;
@@ -115,7 +136,7 @@ export interface pyPixelSource {
 }
 
 const newPixelSource = (await py.runPythonAsync(`
-from MapManagerCore.pyodide_main import createAnnotations
+from mapmanagercore.pyodide_main import createAnnotations
 createAnnotations
 `)) as (srcPath: string) => Promise<pyPixelSource>;
 

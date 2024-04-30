@@ -1,6 +1,6 @@
 import { useAsync } from "react-use";
 import { ViewSelection } from "../loaders/annotations";
-import { PyPixelSource } from "../loaders/py_loader";
+import { PyPixelSource, PyPixelSourceTimePoint } from "../loaders/py_loader";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
 import {
   EDITING_SEGMENT,
@@ -26,6 +26,10 @@ window.addEventListener(
     if (event.key === "Escape") {
       if (EDITING_SEGMENT.peek() && SELECTED_SPINE.peek()) {
         SELECTED_SPINE.value = undefined;
+        return;
+      }
+      if (EDITING_SEGMENT.peek()) {
+        EDITING_SEGMENT.value = undefined;
         return;
       }
       SELECTED_SPINE.value = undefined;
@@ -110,7 +114,7 @@ export function useImageLoader(src: ImageSource): {
  * @returns the set of selected rasters
  */
 export function useRasters(
-  loader: PyPixelSource | undefined,
+  loader: PyPixelSourceTimePoint | undefined,
   selections: ViewSelection[]
 ): {
   rasters?: any[];
@@ -136,7 +140,7 @@ export function useRasters(
 }
 
 export function useRasterSources(
-  loader: PyPixelSource | undefined,
+  loader: PyPixelSourceTimePoint | undefined,
   selections: ViewSelection[]
 ): {
   sources?: (pyImageSource | undefined)[];

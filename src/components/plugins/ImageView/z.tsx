@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import React, { useCallback, useEffect, useRef } from "react";
-import { ImageViewSelection } from ".";
+import { ZRange } from ".";
 import { Signal } from "@preact/signals-react";
 
 const HANDLE_SIZE = 4;
@@ -8,7 +8,7 @@ const SCROLL_SPEED = 0.15;
 const SHIFT_SKIP = 3;
 
 interface Props {
-  selection: Signal<ImageViewSelection>;
+  selection: Signal<ZRange>;
   linked: boolean;
   isActive: boolean;
   length: number;
@@ -56,12 +56,9 @@ export function ZScroll({
         detail: { deltaMin, deltaMax },
       }: CustomEvent<SharedEvent>) => {
         const state = selection.peek();
-        const [min, max] = state.z;
+        const [min, max] = state;
 
-        selection.value = {
-          ...state,
-          z: roundSelection([min + deltaMin, max + deltaMax]),
-        };
+        selection.value = roundSelection([min + deltaMin, max + deltaMax]);
       };
 
       window.addEventListener("z-scale", linkedHandler as any);
@@ -73,8 +70,8 @@ export function ZScroll({
 
     const setSelection = (z: [number, number]) => {
       const state = selection.peek();
-      const deltaMin = z[0] - state.z[0];
-      const deltaMax = z[1] - state.z[1];
+      const deltaMin = z[0] - state[0];
+      const deltaMax = z[1] - state[1];
       if (deltaMin !== 0 || deltaMax !== 0) {
         if (linked) {
           window.dispatchEvent(
@@ -87,10 +84,7 @@ export function ZScroll({
           );
         }
 
-        selection.value = {
-          ...state,
-          z,
-        };
+        selection.value = z;
       }
     };
 
@@ -196,7 +190,7 @@ export function ZScroll({
       .call(brush as any)
       .call(
         brush.move as any,
-        toSlide(roundSelection(selection.peek().z as any))
+        toSlide(roundSelection(selection.peek() as any))
       )
       .select(".overlay")
       .call(drag as any);
@@ -231,10 +225,19 @@ export function ZScroll({
     return () => {
       window.removeEventListener("keydown", handler);
     };
-  }, [svgRef, height, length, selection, selection.value.z, linked, roundSelection, isActive]);
+  }, [
+    svgRef,
+    height,
+    length,
+    selection,
+    selection.value,
+    linked,
+    roundSelection,
+    isActive,
+  ]);
 
   if (!isActive) return <></>;
-  
+
   return (
     <svg ref={svgRef} className="z-control">
       <g className="slides" />

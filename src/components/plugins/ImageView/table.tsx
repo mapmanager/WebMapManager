@@ -2,15 +2,15 @@ import React, { useMemo } from "react";
 import { Table } from "rsuite";
 import { FILTERS, SELECTED_SPINE } from "../globals";
 import { Signal } from "@preact/signals-react";
-import { PixelSource } from "../../../loaders";
-import { ImageViewSelection } from ".";
+import { ZRange } from ".";
+import { PyPixelSourceTimePoint } from "../../../loaders/py_loader";
 
 const { Column, HeaderCell, Cell } = Table;
 
 interface SpineTableProps {
-  loader: PixelSource;
+  loader: PyPixelSourceTimePoint;
   expandedRows: Signal<string[]>;
-  selection: ImageViewSelection;
+  selection: ZRange;
 }
 
 const spineRowSelected = (rowData: any) => {
