@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { ContrastControls } from "./contrast";
 import "./index.scss";
 import { ZScroll } from "./z";
@@ -30,10 +30,7 @@ const DEFAULT_COLOR: Color[] = COLORS_SELECTOR_OPTIONS.map((color) => {
 
 const globalColor: Signal<Color[]> = signal(DEFAULT_COLOR);
 
-export interface ImageViewSelection {
-  t: number;
-  z: [number, number];
-}
+export type ZRange = [min: number, max: number];
 
 export type Color = [number, number, number];
 
@@ -72,19 +69,20 @@ export function ImageView({
     linked
   );
 
-  const selection = useSignal<ImageViewSelection>({
-    t: 0,
-    z: [35, 36],
-  });
+  const time = useSignal<number>(0);
+  const annotations = useMemo(() => {
+    return loader.getTimePoint(time.value);
+  }, [time.value, loader]);
+  const zRange = useSignal<ZRange>([35, 36]);
 
   const selections = useComputed(() =>
     channelsVisible.value.map((visible, c) => ({
-      ...selection.value,
+      z: zRange.value,
       c,
       visible,
     }))
   );
-  const { sources, error } = useRasterSources(loader, selections.value);
+  const { sources, error } = useRasterSources(annotations, selections.value);
 
   // Snap on new selection if forced
   useEffect(() => {
@@ -92,12 +90,9 @@ export function ImageView({
     return SELECTED_SPINE.subscribe((spineId) => {
       if (!isAltKeyDown || !spineId) return;
 
-      let {
-        t,
-        z: [low, high],
-      } = selection.peek();
+      let [low, high] = zRange.peek();
 
-      const spine = loader.getSpinePosition(t, spineId);
+      const spine = annotations.getSpinePosition(spineId);
       if (!spine) return;
 
       const [x, y, newZ] = spine;
@@ -115,20 +110,20 @@ export function ImageView({
         }
 
         low = Math.max(0, low + zTargetDelta);
-        high = Math.min(loader.z, high + zTargetDelta);
-        selection.value = { t, z: [low, high] };
+        high = Math.min(annotations.z, high + zTargetDelta);
+        zRange.value = [low, high];
       });
     });
-  }, [loader, selection, isActive, linked.value, target]);
+  }, [annotations, zRange, isActive, linked.value, target]);
 
-  const annotationLayers = useAnnotations(selection, {
+  const annotationLayers = useAnnotations(zRange, {
     id,
-    loader,
+    loader: annotations,
     showLineSegments: showLineSegments.value,
     showAnchors: showAnchors.value,
     showLabels: showLabels.value,
     showSpines: showSpines.value,
-    selection: selection.value,
+    zRange: zRange.value,
     showLineSegmentsRadius: showLineSegmentsRadius.value,
     annotationSelections: {},
     visible,
@@ -137,10 +132,10 @@ export function ImageView({
   useSignalEffect(() => {
     if (EDITING_SEGMENT.value) {
       // restrict z when segment is being edited
-      const { t, z } = selection.value;
+      const z = zRange.value;
       if (z[0] - z[1] !== -1) {
         const mean = Math.trunc((z[0] + z[1]) / 2);
-        selection.value = { t, z: [mean, mean + 1] };
+        zRange.value = [mean, mean + 1];
       }
     }
   });
@@ -157,8 +152,8 @@ export function ImageView({
               <Panel defaultExpanded className="spine-table">
                 <SpineTable
                   expandedRows={segmentsExpandedRows}
-                  loader={loader}
-                  selection={selection.value}
+                  loader={annotations}
+                  selection={zRange.value}
                 />
               </Panel>
               <Panel header="Controls" defaultExpanded>
@@ -241,12 +236,13 @@ export function ImageView({
         selections={selections.value}
         linked={linked.value}
         target={target.value}
+        loader={annotations}
         layers={annotationLayers}
       >
         <ZScroll
-          length={loader!.z}
+          length={annotations!.z}
           height={height}
-          selection={selection}
+          selection={zRange}
           linked={linked.value}
           isActive={isActive}
         />

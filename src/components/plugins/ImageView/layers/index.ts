@@ -19,15 +19,15 @@ import {
 import { AnnotationsOptions } from "../../../../python";
 import { PickingInfo } from "@deck.gl/core/typed";
 import { Signal } from "@preact/signals-react";
-import { PyPixelSource } from "../../../../loaders/py_loader";
+import { PyPixelSourceTimePoint } from "../../../../loaders/py_loader";
 import { PyProxy, TypedArray } from "pyodide/ffi";
 import { OutlinePathExtension } from "./outlineExtension";
 import { isShiftKeyDown } from "../../../utils";
-import { ImageViewSelection } from "..";
+import { ZRange } from "..";
 
 export interface AnnotationsProps extends AnnotationsOptions {
   id: string;
-  loader: PyPixelSource;
+  loader: PyPixelSourceTimePoint;
   visible: boolean;
 }
 
@@ -52,12 +52,12 @@ const INTERACTIONS = ["select", "edit"];
 let destroyOnDrop: (() => void) | undefined = undefined;
 let callOnZChange: ((z: number) => void) | undefined = undefined;
 const watchForZChanges = (
-  selectionSignal: Signal<ImageViewSelection>,
+  selectionSignal: Signal<ZRange>,
   updateTranslation: (z: number) => void
 ) => {
   callOnZChange = updateTranslation;
   if (destroyOnDrop) return;
-  const destroySub = selectionSignal.subscribe(({ z }) => {
+  const destroySub = selectionSignal.subscribe((z) => {
     if (callOnZChange) callOnZChange(z[0]);
   });
 
@@ -68,7 +68,7 @@ const watchForZChanges = (
 };
 
 export function useAnnotations(
-  selectionSignal: Signal<ImageViewSelection>,
+  selectionSignal: Signal<ZRange>,
   options: AnnotationsProps
 ): any[] {
   const pendingEditVersion = DATA_VERSION.value;
@@ -81,7 +81,7 @@ export function useAnnotations(
     showLineSegments,
     showLineSegmentsRadius,
     showSpines,
-    selection,
+    zRange,
     visible,
   } = options;
   const filters = FILTERS.value;
@@ -111,7 +111,7 @@ export function useAnnotations(
       segmentID: selectedSegment,
       segmentIDEditing: editingSegment,
       spineID: selectedSpine,
-    } as Record<string, string>;
+    } as Record<string, number | undefined>;
 
     const datasets = loader.getAnnotations({
       showAnchors,
@@ -121,7 +121,7 @@ export function useAnnotations(
       showSpines,
       filters,
       annotationSelections,
-      selection,
+      zRange,
     });
 
     // console.timeEnd("getAnnotations_js");
@@ -144,7 +144,7 @@ export function useAnnotations(
         onClick: (pickingInfo: PickingInfo) => {
           if (!selectedSegment || !isShiftKeyDown) return;
           const [x, y] = pickingInfo.coordinate!;
-          const z = (selection.z[1] + selection.z[0]) / 2;
+          const z = (zRange[1] + zRange[0]) / 2;
           const newSpineId = loader.addSpine(selectedSegment, x, y, z);
           if (newSpineId) {
             dataChanged();
@@ -179,11 +179,11 @@ export function useAnnotations(
         data,
         pointType: isLabel ? "text" : "circle",
         lineWidthUnits: fixed || hasOffset || hasOutline ? "common" : "pixels",
-        lineWidthMinPixels: hasOffset || hasOutline ? 0 : 1,
-        lineWidthScale: hasOffset || hasOutline ? 1 : 2,
+        lineWidthMinPixels: hasOffset || hasOutline ? 0 : fixed ? 0 : 1,
+        lineWidthScale: hasOffset || hasOutline ? 1 : fixed ? 1 : 2,
         pointRadiusUnits: fixed ? "common" : "pixels",
         pointRadiusMinPixels: 3,
-        pointRadiusMaxPixels: 7,
+        pointRadiusMaxPixels: fixed ? 2 : 7,
         pointRadiusScale: 2,
         pickable,
         onClick: (pickingInfo: PickingInfo, event: any) => {
@@ -212,12 +212,11 @@ export function useAnnotations(
               if (dragging !== layerId || !pickingInfo.coordinate || !id)
                 return;
               let [x, y] = pickingInfo.coordinate!;
-              const z = Math.trunc((selection.z[1] + selection.z[0]) / 2);
+              const z = Math.trunc((zRange[1] + zRange[0]) / 2);
               watchForZChanges(selectionSignal, (z) =>
                 translate(id, x, y, z, state)
               );
-              if (translate(id, x, y, z, state))
-                dataChanged();
+              if (translate(id, x, y, z, state)) dataChanged();
 
               state = State.dragging;
               event.stopImmediatePropagation();
@@ -229,10 +228,9 @@ export function useAnnotations(
                 .properties[pickingInfo.index]?.id;
               if (dragging !== layerId || !id) return;
               let [x, y] = pickingInfo.coordinate! ?? [0, 0];
-              const z = Math.trunc((selection.z[1] + selection.z[0]) / 2);
+              const z = Math.trunc((zRange[1] + zRange[0]) / 2);
               state = State.end;
-              if (translate(id, x, y, z, state))
-                dataChanged();
+              if (translate(id, x, y, z, state)) dataChanged();
               event.stopImmediatePropagation();
               dragging = undefined;
               destroyOnDrop?.();
@@ -246,7 +244,8 @@ export function useAnnotations(
         lineJointRounded: false,
         textFontWeight: 700,
         getText: isLabel
-          ? (x: Feature<Geometry, GeoJsonProperties>) => x.properties?.id
+          ? (x: Feature<Geometry, GeoJsonProperties>) =>
+              String(x.properties?.id)
           : undefined,
         getTextColor: isLabel
           ? getFeature(properties, "fill", true) || [0, 0, 0, 0]
@@ -299,7 +298,7 @@ export function useAnnotations(
   }, [
     id,
     loader,
-    selection,
+    zRange,
     showAnchors,
     showLabels,
     showLineSegments,

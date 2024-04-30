@@ -11,6 +11,7 @@ import { useEffect, useMemo } from "react";
 import { ViewSelection } from "../../../loaders/annotations";
 import { signal, useComputed, useSignal } from "@preact/signals-react";
 import { PixelSource } from "../../../loaders";
+import { PyPixelSourceTimePoint } from "../../../loaders/py_loader";
 
 const MAX_ZOOM = 4;
 const MIN_ZOOM = -2;
@@ -37,6 +38,7 @@ interface ImageViewerProps {
   contrastLimits: [number, number][];
   selections: ViewSelection[];
   linked: boolean;
+  loader: PyPixelSourceTimePoint;
   layers: any[];
   target?: [number, number];
 }
@@ -84,18 +86,12 @@ const getTooltip = ({ object, layer }: any) => {
   return layer.props.getTooltip(object);
 };
 
-export const ImageViewerRoot = ({
-  loader,
-  children,
-}: {
-  loader: PixelSource;
-  children: any[];
-}) => {
+export const ImageViewerRoot = ({ children }: { children: any[] }) => {
   const viewStates = useSignal<any>({});
   const viewsProps = ViewsContext.value;
 
   const [views, layerProps, layers] = useMemo(() => {
-    const loaderArray = [loader];
+    // const loaderArray = [loader];
     const viewsProps_ = Object.values(viewsProps);
 
     const linkedIds = viewsProps_
@@ -117,9 +113,16 @@ export const ImageViewerRoot = ({
     );
 
     const layerProps = viewsProps_.map(
-      ({ id, contrastLimits, colors, channelsVisible, selections }) => ({
+      ({
         id,
-        loader: loaderArray,
+        contrastLimits,
+        colors,
+        channelsVisible,
+        selections,
+        loader,
+      }) => ({
+        id,
+        loader: [loader],
         contrastLimits,
         colors,
         channelsVisible,
@@ -138,7 +141,7 @@ export const ImageViewerRoot = ({
       const overviewView = new OverviewViewWithOffset(
         {
           id,
-          loader: loaderArray,
+          loader: [view.loader],
           detailHeight: view.height,
           detailWidth: view.width,
           ...DEFAULT_OVERVIEW,
@@ -158,12 +161,12 @@ export const ImageViewerRoot = ({
     const viewState = viewStates.peek();
     const newStates = {} as any;
 
-    for (const { id, height, width, minimap, target } of viewsProps_) {
+    for (const { id, height, width, minimap, target, loader } of viewsProps_) {
       const targetPosition = target;
 
       if (!Object.hasOwn(viewState, id)) {
         const defaultViewState = getDefaultInitialViewState(
-          loaderArray,
+          [loader],
           { height, width },
           0.5
         );
@@ -211,7 +214,7 @@ export const ImageViewerRoot = ({
     }
 
     return [views, layerProps, layers];
-  }, [viewsProps, viewStates, loader]);
+  }, [viewsProps, viewStates]);
 
   const viewStatesArr = useComputed(() => [
     ...Object.entries(viewStates.value).map(([id, viewState]: any) => {
