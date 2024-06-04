@@ -4,7 +4,7 @@ import "./index.scss";
 import { ZScroll } from "./z";
 import { PanelGroup, Panel, Checkbox } from "rsuite";
 import { Inspector } from "../../layout";
-import { EDITING_SEGMENT, SELECTED_SPINE } from "../globals";
+import { EDITING_SEGMENT, EDITING_SEGMENT_PATH, SELECTED_SPINE } from "../globals";
 import { ImageViewer } from "./sharedViewer";
 import { PluginProps } from "..";
 import {
@@ -18,7 +18,7 @@ import {
 import { useAnnotations } from "./layers";
 import { isAltKeyDown, useLinkedSignal, useRasterSources } from "../../utils";
 import { VisibilityControl } from "../../Visibility";
-import { SpineTable } from "./table";
+import { SpineTable } from "./spineSegmentTable";
 import { COLORS_SELECTOR_OPTIONS } from "./colorPicker";
 import { color as D3Color } from "d3";
 
@@ -130,7 +130,7 @@ export function ImageView({
   });
 
   useSignalEffect(() => {
-    if (EDITING_SEGMENT.value) {
+    if (EDITING_SEGMENT.value || EDITING_SEGMENT_PATH.value) {
       // restrict z when segment is being edited
       const z = zRange.value;
       if (z[0] - z[1] !== -1) {

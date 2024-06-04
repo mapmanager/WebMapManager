@@ -4,11 +4,10 @@ import { Loader, Panel, PanelGroup, SelectPicker, Slider } from "rsuite";
 import Plot from "react-plotly.js";
 import { useEffect, useMemo, useState } from "react";
 import { Data, PlotMouseEvent, ScatterData } from "plotly.js";
-import { FILTERS, SELECTED_SPINE, setFilters } from "./globals";
+import { DATA_VERSION, FILTERS, SELECTED_SPINE, setFilters } from "./globals";
 import { VisibilityControl } from "../Visibility";
 import { extent, scaleLinear, scaleOrdinal, schemeCategory10 } from "d3";
-import { ColumnAttributes, pyQuery } from "../../python";
-import { useAsync } from "react-use";
+import { ColumnAttributes } from "../../python";
 
 const styles = {
   width: "100%",
@@ -44,28 +43,46 @@ function useQueryState(
   attributes: Record<string, ColumnAttributes>,
   key: string | null
 ): [ColumnAttributes | null, (key: string) => void] {
-  const [keyState, setkeyState] = useState(key);
-  return [keyState ? attributes[keyState] : null, setkeyState];
+  const [keyState, setKeyState] = useState(key);
+  return [keyState ? attributes[keyState] : null, setKeyState];
 }
 
 export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
-  const [attributes, names] = useMemo(() => {
+  const dataVersion = DATA_VERSION.value;
+  const [attributes, names, categorical] = useMemo(() => {
     const attributes = loader.columnsAttributes();
     const names = Object.entries(attributes)
       .filter(([_, attribute]) => attribute.title && attribute.plot)
       .map(([key, attribute]) => ({
         label: attribute.title,
         value: key,
+        group: attribute.group,
       }));
-    return [attributes, names];
-  }, [loader]);
+
+    const categorical = Object.entries(attributes)
+      .filter(([_, attribute]) => attribute.title && attribute.categorical)
+      .map(([key, attribute]) => ({
+        label: attribute.title,
+        value: key,
+        group: attribute.group,
+      }));
+
+    names.sort(
+      (a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label)
+    );
+    categorical.sort(
+      (a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label)
+    );
+    return [attributes, names, categorical];
+  }, [loader, dataVersion]);
 
   const [xAxis, setXAxis] = useQueryState(attributes, "x");
   const [yAxis, setYAxis] = useQueryState(attributes, "y");
   const [zAxis, setZAxis] = useQueryState(attributes, null);
   const [scaleOn, setScaleOn] = useQueryState(attributes, null);
   const [segment, setSegment] = useState(null);
-  const [colorOn, setColorOn] = useQueryState(attributes, "Segment ID");
+  const [colorOn, setColorOn] = useQueryState(attributes, "segmentID");
+  const [symbolOn, setSymbolOn] = useQueryState(attributes, null);
 
   // // TODO: SIZE ON SCALER
   // // TODO: COLOR ON Categorical & Numeric spectrum data.
@@ -89,15 +106,27 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
     const value = useMemo(() => {
       if (!attributes) return null;
       return loader.getColumn(attributes.key);
-    }, [loader, attributes]);
+    }, [loader, dataVersion, attributes]);
 
     return value;
   };
 
-  const colorsValues = (useQuery(loader, colorOn) as string[]) ?? [];
-  const colorScale = scaleOrdinal()
-    .domain([...new Set(colorsValues)] as any)
-    .range(schemeCategory10);
+  const colorsValues = useMemo(
+    () =>
+      loader
+        .getColors(colorOn?.key)
+        .map((color: any) =>
+          color.length === 4
+            ? `rgba(${color.join(",")})`
+            : `rgb(${color.join(",")})`
+        ),
+    [loader, dataVersion, colorOn]
+  );
+
+  const symbols = useMemo(
+    () => loader.getSymbols(symbolOn?.key),
+    [loader, dataVersion, symbolOn]
+  );
 
   const ids = useQuery(loader, attributes["spineID"]) ?? [];
   const segmentIds = useQuery(loader, attributes["segmentID"]) ?? [];
@@ -140,8 +169,9 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
         color: ids.map((id, idx) =>
           id === globalSelection
             ? "rgb(254, 118, 7)"
-            : (colorScale(colorsValues[idx] as any) as any)
+            : (colorsValues[idx] as any)
         ),
+        symbol: symbols,
         size: ids.map((id, idx) => {
           return (
             (id === globalSelection ? scale * 1.25 : scale) *
@@ -215,24 +245,27 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
             <Panel header="Axis" defaultExpanded>
               <SelectPicker
                 label="x"
+                groupBy="group"
                 cleanable={false}
-                value={xAxis.title}
+                value={xAxis.key}
                 style={styles}
                 data={names}
                 onChange={setXAxis as any}
               />
               <SelectPicker
                 label="y"
+                groupBy="group"
                 cleanable={false}
-                value={yAxis.title}
+                value={yAxis.key}
                 style={styles}
                 data={names}
                 onChange={setYAxis as any}
               />
               <SelectPicker
                 label="z"
+                groupBy="group"
                 cleanable={true}
-                value={zAxis?.title}
+                value={zAxis?.key}
                 style={styles}
                 data={names}
                 onChange={setZAxis as any}
@@ -241,11 +274,30 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
             <Panel header="Markers" defaultExpanded>
               <SelectPicker
                 label="Size"
+                groupBy="group"
                 cleanable={true}
-                value={scaleOn?.title}
+                value={scaleOn?.key}
                 style={styles}
                 data={names}
                 onChange={setScaleOn as any}
+              />
+              <SelectPicker
+                label="Color"
+                groupBy="group"
+                cleanable={true}
+                value={colorOn?.key}
+                style={styles}
+                data={categorical}
+                onChange={setColorOn as any}
+              />
+              <SelectPicker
+                label="Symbol"
+                groupBy="group"
+                cleanable={true}
+                value={symbolOn?.key}
+                style={styles}
+                data={categorical}
+                onChange={setSymbolOn as any}
               />
               <div style={{ display: "flex", alignItems: "center" }}>
                 <label>Scale</label>

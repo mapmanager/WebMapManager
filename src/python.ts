@@ -2,14 +2,12 @@ import { PyProxy } from "pyodide/ffi";
 import { ZRange } from "./components/plugins/ImageView";
 // @ts-ignore
 import requirements from "./MapManagerCore/requirements.json";
-import { Metadata } from "./loaders/metadata";
 
 // Load python
-globalThis.py = await window.loadPyodide({}).then(async (py) => {
+globalThis.py = await window.loadPyodide().then(async (py) => {
   if (requirements.micropip.length > 0) {
     requirements.loadPackage.push("micropip");
   }
-
   await py.loadPackage(requirements.loadPackage);
   if (requirements.micropip.length > 0) {
     const micropip = py.pyimport("micropip");
@@ -86,6 +84,7 @@ export type pdDataFrame = any;
 
 export interface ColumnAttributes {
   title: string;
+  group: string;
   categorical: boolean;
   divergent: boolean;
   description: string;
@@ -98,6 +97,7 @@ export interface pyPixelSourceTimePoint {
   metadata_json(): string;
   slices_js(channel: number, zRange: [number, number]): Promise<pyImageSource>;
   deleteSpine(spineId: number): void;
+  deleteSegment(spineId: number): void;
 
   addSpine(
     segmentId: number,
@@ -105,6 +105,8 @@ export interface pyPixelSourceTimePoint {
     y: number,
     z: number
   ): number | undefined;
+
+  newSegment(): number;
 
   getSegmentsAndSpines(options: {
     zRange: ZRange;
@@ -122,6 +124,8 @@ export interface pyPixelSourceTimePoint {
 
   undo(): void;
   redo(): void;
+
+  onDelete(): boolean;
 }
 
 export interface pyPixelSource {
@@ -129,6 +133,8 @@ export interface pyPixelSource {
 
   columnsAttributes_json(): string;
   getColumn(name: string): Promise<pdSeries>;
+  getColors(name?: string): Promise<pdSeries>;
+  getSymbols(name?: string): Promise<pdSeries>;
   table(): Promise<pdDataFrame>;
 
   undo(): void;

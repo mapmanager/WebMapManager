@@ -15,6 +15,7 @@ import {
   SELECTED_SPINE,
   SELECTED_SEGMENT,
   dataChanged,
+  EDITING_SEGMENT_PATH,
 } from "../../globals";
 import { AnnotationsOptions } from "../../../../python";
 import { PickingInfo } from "@deck.gl/core/typed";
@@ -36,6 +37,7 @@ const textSizeMaxPixels = 13;
 const AnnotationSelections = {
   segmentID: SELECTED_SEGMENT,
   segmentIDEditing: EDITING_SEGMENT,
+  segmentIDEditingPath: EDITING_SEGMENT_PATH,
   spineID: SELECTED_SPINE,
 } as Record<string, Signal<string | undefined>>;
 
@@ -87,11 +89,13 @@ export function useAnnotations(
   const filters = FILTERS.value;
   const selectedSegment = SELECTED_SEGMENT.value;
   const editingSegment = EDITING_SEGMENT.value;
+  const editingSegmentPath = EDITING_SEGMENT_PATH.value;
   const selectedSpine = SELECTED_SPINE.value;
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Backspace") {
+        if (loader.onDelete()) return dataChanged();
         if (!EDITING_SEGMENT.peek()) return;
         const spine = SELECTED_SPINE.peek();
         if (!spine) return;
@@ -110,6 +114,7 @@ export function useAnnotations(
     const annotationSelections = {
       segmentID: selectedSegment,
       segmentIDEditing: editingSegment,
+      segmentIDEditingPath: editingSegmentPath,
       spineID: selectedSpine,
     } as Record<string, number | undefined>;
 
@@ -123,7 +128,6 @@ export function useAnnotations(
       annotationSelections,
       zRange,
     });
-
     // console.timeEnd("getAnnotations_js");
     const layers = [];
     layers.push(
@@ -171,8 +175,15 @@ export function useAnnotations(
       const hasOffset = offset !== undefined;
       const hasOutline = outline !== undefined;
       const translate = properties.get("drag");
+      const hover = properties.get("hover");
+      const onHoverOut = properties.get("hoverOut");
+      const click = properties.get("click");
       const pickable =
-        interactions.some((x) => x !== undefined) || translate !== undefined;
+        interactions.some((x) => x !== undefined) ||
+        translate !== undefined ||
+        click !== undefined ||
+        hover !== undefined ||
+        onHoverOut !== undefined;
 
       const layer = new GeoJsonLayer({
         id: `-#${id}#-annotations-${layerId}`,
@@ -187,6 +198,16 @@ export function useAnnotations(
         pointRadiusScale: 2,
         pickable,
         onClick: (pickingInfo: PickingInfo, event: any) => {
+          if (click) {
+            const id = (pickingInfo.sourceLayer?.props.data as any).properties[
+              pickingInfo.index
+            ]?.id;
+            let [x, y] = pickingInfo.coordinate!;
+            const z = Math.trunc((zRange[1] + zRange[0]) / 2);
+            if (click(id, x, y, z)) dataChanged();
+            return;
+          }
+
           const key = 2 === event.tapCount ? interactions[1] : interactions[0];
           if (!key) return;
           const selection = (pickingInfo.sourceLayer?.props.data as any)
@@ -196,6 +217,19 @@ export function useAnnotations(
           if (!selector) return;
           selector.value = selection;
         },
+        onHover: hover
+          ? (pickingInfo: PickingInfo) => {
+              if (!pickingInfo.picked) {
+                if (onHoverOut && onHoverOut()) dataChanged();
+                return;
+              }
+              const id = (pickingInfo.sourceLayer?.props.data as any)
+                .properties[pickingInfo.index]?.id;
+              let [x, y] = pickingInfo.coordinate!;
+              const z = Math.trunc((zRange[1] + zRange[0]) / 2);
+              if (hover(id, x, y, z)) dataChanged();
+            }
+          : undefined,
         onDragStart: translate
           ? (pickingInfo, event) => {
               if (!pickingInfo.coordinate) return;
@@ -310,6 +344,7 @@ export function useAnnotations(
     selectedSpine,
     visible,
     pendingEditVersion,
+    editingSegmentPath,
   ]);
 
   return layers as any;
