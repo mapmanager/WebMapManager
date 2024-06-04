@@ -4,6 +4,7 @@ import { PyPixelSource, PyPixelSourceTimePoint } from "../loaders/py_loader";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
 import {
   EDITING_SEGMENT,
+  EDITING_SEGMENT_PATH,
   SELECTED_SEGMENT,
   SELECTED_SPINE,
   setFilters,
@@ -24,10 +25,16 @@ window.addEventListener(
     isAltKeyDown = event.altKey;
     isShiftKeyDown = event.shiftKey;
     if (event.key === "Escape") {
-      if (EDITING_SEGMENT.peek() && SELECTED_SPINE.peek()) {
+      if (EDITING_SEGMENT_PATH.peek()) {
+        EDITING_SEGMENT_PATH.value = undefined;
+        return;
+      }
+
+      if (SELECTED_SPINE.peek()) {
         SELECTED_SPINE.value = undefined;
         return;
       }
+
       if (EDITING_SEGMENT.peek()) {
         EDITING_SEGMENT.value = undefined;
         return;

@@ -1,39 +1,33 @@
 import { useMemo } from "react";
 import { PluginProps } from ".";
 import { Table } from "rsuite";
-import { useAsync } from "react-use";
+import { DATA_VERSION } from "./globals";
 
 const { Column, HeaderCell, Cell } = Table;
 
 export const TableView = ({ loader, height }: PluginProps) => {
-  const { loading, value: stats } = useAsync(async () => {
-    return await loader.table();
-  }, [loader]);
-
-  const [columns, data] = useMemo(() => {
+  const [columns, names, data] = useMemo(() => {
+    const stats = loader.table();
     if (!stats) return [[], []];
+    const columns = stats.columns.to_list();
+    const attributes = loader.columnsAttributes();
     return [
-      stats.columns.tolist().toJs(),
+      columns,
+      columns.map((column: string) => attributes[column].title),
       stats.values
         .tolist()
         .toJs()
         .map((data: any[]) => ({ data })),
     ];
-  }, [stats]);
+  }, [loader, DATA_VERSION.value]);
 
   return (
     <div style={{ background: "#1a1a1a" }}>
-      <Table
-        loading={loading}
-        height={height}
-        data={data}
-        wordWrap={true}
-        headerHeight={65}
-      >
+      <Table height={height} data={data} wordWrap={true} headerHeight={65}>
         {columns.map((name: string, index: number) => {
           return (
             <Column key={name} width={100} resizable>
-              <HeaderCell>{name}</HeaderCell>
+              <HeaderCell>{names[index]}</HeaderCell>
               <Cell>{(rowData) => rowData.data[index]}</Cell>
             </Column>
           );

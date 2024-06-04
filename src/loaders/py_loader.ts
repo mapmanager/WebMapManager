@@ -1,5 +1,4 @@
 import type { PixelData } from "@vivjs/types/src/index";
-import { Metadata } from "./metadata";
 import {
   AnnotatedPixelSource,
   RasterSelection,
@@ -15,7 +14,6 @@ import {
   pyImageSource,
   pyPixelSource,
   pyPixelSourceTimePoint,
-  pyQuery,
 } from "../python";
 import { SIGNAL_ABORTED } from "@hms-dbmi/viv";
 import { ZRange } from "../components/plugins/ImageView";
@@ -109,8 +107,16 @@ export class PyPixelSourceTimePoint extends AnnotatedPixelSource {
     this.#proxy.undo();
   }
 
+  onDelete() {
+    return this.#proxy.onDelete();
+  }
+
   redo() {
     this.#proxy.redo();
+  }
+
+  newSegment() {
+    return this.#proxy.newSegment();
   }
 
   public getSpinePosition(
@@ -142,6 +148,16 @@ export class PyPixelSourceTimePoint extends AnnotatedPixelSource {
 
   public deleteSpine(spineId: number) {
     this.#proxy.deleteSpine(spineId);
+  }
+
+  public deleteSegment(segmentID: number) {
+    try {
+      this.#proxy.deleteSegment(segmentID);
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+    return true;
   }
 }
 
@@ -181,6 +197,14 @@ export class PyPixelSource {
 
   public getColumn(key: string): pdSeries {
     return (this.#proxy.getColumn(key) as any).toJs();
+  }
+
+  public getColors(key?: string): pdSeries {
+    return (this.#proxy.getColors(key) as any).toJs();
+  }
+
+  public getSymbols(key?: string): pdSeries {
+    return (this.#proxy.getSymbols(key) as any).toJs();
   }
 
   public table(): pdDataFrame {
