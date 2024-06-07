@@ -5,7 +5,6 @@ A web version of PyMapManager
 
 * `git submodule init`
 * `git submodule update`
-* Add a `.mmap` file to `/public/data/rr30a_s0u.mmap`
 * Install [NodeJs](https://nodejs.org/en)
 * Run `npm install` to install dependencies
 
