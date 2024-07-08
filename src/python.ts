@@ -108,6 +108,8 @@ export interface pyPixelSourceTimePoint {
 
   newSegment(): number;
 
+  shape: any;
+
   getSegmentsAndSpines(options: {
     zRange: ZRange;
     filters?: Set<number> | undefined;

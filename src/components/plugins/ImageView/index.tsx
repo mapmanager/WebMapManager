@@ -101,8 +101,8 @@ export function ImageView({
 
         // Snap to the new z;
         let zTargetDelta = 0;
-        if (low > newZ) {
-          zTargetDelta = newZ - low;
+        if (low >= newZ) {
+          zTargetDelta = newZ - 1 - low;
         } else if (high < newZ) {
           zTargetDelta = newZ - high;
         } else {

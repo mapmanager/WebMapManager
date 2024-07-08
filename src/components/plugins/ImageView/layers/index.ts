@@ -39,7 +39,7 @@ const AnnotationSelections = {
   segmentIDEditing: EDITING_SEGMENT,
   segmentIDEditingPath: EDITING_SEGMENT_PATH,
   spineID: SELECTED_SPINE,
-} as Record<string, Signal<string | undefined>>;
+} as Record<string, Signal<number | undefined>>;
 
 enum State {
   start = 0,
@@ -198,6 +198,9 @@ export function useAnnotations(
         pointRadiusScale: 2,
         pickable,
         onClick: (pickingInfo: PickingInfo, event: any) => {
+          if (event.rightButton) {
+            return;
+          }
           if (click) {
             const id = (pickingInfo.sourceLayer?.props.data as any).properties[
               pickingInfo.index
@@ -215,7 +218,7 @@ export function useAnnotations(
           if (!selection) return;
           const selector = AnnotationSelections[key];
           if (!selector) return;
-          selector.value = selection;
+          selector.value = Number(selection);
         },
         onHover: hover
           ? (pickingInfo: PickingInfo) => {

@@ -194,7 +194,7 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
     },
   ];
 
-  const layout: any = {
+  const layout: Partial<Plotly.Layout> = {
     autosize: false,
     uirevision: "true",
     width,
@@ -205,19 +205,19 @@ export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
   if (!zAxis) {
     layout["xaxis"] = {
       title: {
-        text: xAxis,
+        text: xAxis.title,
       },
     };
     layout["yaxis"] = {
       title: {
-        text: yAxis,
+        text: yAxis.title,
       },
     };
   } else {
     layout["scene"] = {
-      xaxis: { title: xAxis },
-      yaxis: { title: yAxis },
-      zaxis: { title: zAxis ?? "" },
+      xaxis: { title: xAxis.title },
+      yaxis: { title: yAxis.title },
+      zaxis: { title: zAxis.title },
     };
     layout["margin"] = {
       l: 0,

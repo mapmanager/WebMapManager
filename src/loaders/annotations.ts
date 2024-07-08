@@ -23,19 +23,13 @@ export interface RasterSelection {
 export type Label = ["c", "z"];
 
 export abstract class AnnotatedPixelSource implements PixelSource<Label> {
-  shape: number[];
   dtype: SupportedDtype;
   labels: Labels<Label>;
-  tileSize: number;
-  metadata: Metadata;
   spineStats: string[];
   meta?: PixelSourceMeta;
 
-  constructor(metadata: Metadata, spineStats: string[]) {
-    const { c = 1, z = 1, x, y } = metadata.size ?? {};
-    this.shape = [c, z, y, x];
-
-    this.dtype = metadata.dtype ?? "Uint16";
+  constructor(spineStats: string[]) {
+    this.dtype = "Uint16";
     this.labels = ["c", "z", "y", "x"];
 
     const meta: any = {
@@ -55,10 +49,14 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
     //     });
     // }
 
-    this.tileSize = x;
-    this.metadata = metadata;
     this.meta = meta;
     this.spineStats = spineStats;
+  }
+
+  abstract get shape(): [number, number, number, number];
+
+  get tileSize(): number {
+    return this.shape[3];
   }
 
   public get z(): number {

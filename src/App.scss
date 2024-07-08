@@ -148,3 +148,21 @@
 .flexlayout__tab:has(.ImageView) {
   pointer-events: none;
 }
+
+.loading-file {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 1);
+}
+
+.loading-container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}

@@ -23,7 +23,21 @@ const InitialStateJson: FlexLayout.IJsonModel = {
   layout: {
     type: "row",
     weight: 100,
-    children: [],
+    children: [
+      {
+        type: "tabset",
+        weight: 50,
+        selected: 0,
+        active: true,
+        children: [
+          {
+            type: "tab",
+            component: "ImageView",
+            name: "Image",
+          },
+        ],
+      },
+    ],
   },
 };
 

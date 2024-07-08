@@ -18,6 +18,7 @@ import {
 import { SIGNAL_ABORTED } from "@hms-dbmi/viv";
 import { ZRange } from "../components/plugins/ImageView";
 import type { PyProxy } from "pyodide/ffi";
+import { ImageSource } from "../components/utils";
 
 export class PyPixelSourceTimePoint extends AnnotatedPixelSource {
   #proxy: pyPixelSourceTimePoint;
@@ -25,8 +26,12 @@ export class PyPixelSourceTimePoint extends AnnotatedPixelSource {
 
   constructor(proxy: pyPixelSourceTimePoint) {
     const defaultStatNames = ["x", "y", "z"];
-    super(JSON.parse(proxy.metadata_json()), defaultStatNames);
+    super(defaultStatNames);
     this.#proxy = proxy;
+  }
+
+  get shape(): [number, number, number, number] {
+    return this.#proxy.shape.toJs();
   }
 
   async getRaster(selection: RasterSelection): Promise<PixelData> {
@@ -168,12 +173,19 @@ export class PyPixelSource {
     this.#proxy = proxy;
   }
 
-  static async Load(base_url: string): Promise<PyPixelSource> {
-    const response = await fetch(base_url);
-    if (!response.ok)
-      throw new Error(`Failed to load image: ${response.statusText}`);
+  static async Load(src: ImageSource): Promise<PyPixelSource> {
+    if (src instanceof PyPixelSource) return src;
+    let data: ArrayBuffer;
+    if (src instanceof File) {
+      data = await src.arrayBuffer();
+    } else {
+      const response = await fetch(src);
+      if (!response.ok)
+        throw new Error(`Failed to load image: ${response.statusText}`);
 
-    const data = await response.arrayBuffer();
+      data = await response.arrayBuffer();
+    }
+
     await py.FS.writeFile("/tmp/map.mmap", new Uint8Array(data));
     const proxy = await newPixelSource("/tmp/map.mmap");
     return new PyPixelSource(proxy);
