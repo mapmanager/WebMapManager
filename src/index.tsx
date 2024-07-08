@@ -4,9 +4,14 @@ import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 
+let element = document.getElementById("main-view") as HTMLElement
 const root = ReactDOM.createRoot(
-  document.getElementById("main-view") as HTMLElement
+  element
 );
+
+element.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+});
 
 root.render(<App />);
 

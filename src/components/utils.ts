@@ -11,7 +11,7 @@ import {
 } from "./plugins/globals";
 import { pyImageSource } from "../python";
 
-export type ImageSource = string;
+export type ImageSource = string | File;
 
 export let isShiftKeyDown = false;
 export let isAltKeyDown = false;

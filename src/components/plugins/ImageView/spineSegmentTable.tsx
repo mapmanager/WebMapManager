@@ -117,7 +117,7 @@ export const SpineTable = ({
     return segments.map((seg) => ({
       id: "segment" + seg.get("segmentID"),
       _id: Number(seg.get("segmentID")),
-      title: "Segment " + (Number(seg.get("segmentID")) + 1),
+      title: "Segment " + Number(seg.get("segmentID")),
       segment: true,
       onClick: (id: number) => {
         if (loader.deleteSegment(id)) {
@@ -139,7 +139,7 @@ export const SpineTable = ({
       children: seg.get("spines").map((d) => ({
         id: Number(d.get("id")),
         _id: Number(d.get("id")),
-        title: "" + (Number(d.get("id")) + 1),
+        title: "" + Number(d.get("id")),
         type: d.get("type"),
         invisible: d.get("invisible"),
       })),
