@@ -141,6 +141,8 @@ export interface pyPixelSource {
 
   undo(): void;
   redo(): void;
+
+  save(): void;
 }
 
 const newPixelSource = (await py.runPythonAsync(`

@@ -38,7 +38,7 @@ const SelectableCell = ({
       className={
         (selected ? "selected" : "") +
         (isSpine
-          ? " spine" + (props.rowData.invisible ? " invisible" : "")
+          ? " spine" + (props.rowData.invisible ? " invisible-cell" : "")
           : "segment-cell")
       }
     />
@@ -65,11 +65,14 @@ const ActionCell = ({
         size="xs"
         icon={<DeleteIcon />}
         className="icon-button"
-        disabled={props.rowData.children.length > 0}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           e.currentTarget.blur();
+          if (props.rowData.children.length > 0) {
+            alert("Cannot delete segment with spines");
+            return;
+          }
           props.rowData.onClick(props.rowData._id);
         }}
       />
@@ -122,7 +125,13 @@ export const SpineTable = ({
       onClick: (id: number) => {
         if (loader.deleteSegment(id)) {
           batch(() => {
-            console.log("Deleted segment", id, EDITING_SEGMENT_PATH.peek(), SELECTED_SEGMENT.peek(), EDITING_SEGMENT.peek())
+            console.log(
+              "Deleted segment",
+              id,
+              EDITING_SEGMENT_PATH.peek(),
+              SELECTED_SEGMENT.peek(),
+              EDITING_SEGMENT.peek()
+            );
             if (EDITING_SEGMENT_PATH.peek() === id) {
               EDITING_SEGMENT_PATH.value = undefined;
             }

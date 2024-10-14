@@ -2,9 +2,13 @@ import React, { useEffect, useMemo } from "react";
 import { ContrastControls } from "./contrast";
 import "./index.scss";
 import { ZScroll } from "./z";
-import { PanelGroup, Panel, Checkbox } from "rsuite";
-import { Inspector } from "../../layout";
-import { EDITING_SEGMENT, EDITING_SEGMENT_PATH, SELECTED_SPINE } from "../globals";
+import { PanelGroup, Panel, Nav } from "rsuite";
+import { Inspector, NavBar } from "../../layout";
+import {
+  EDITING_SEGMENT,
+  EDITING_SEGMENT_PATH,
+  SELECTED_SPINE,
+} from "../globals";
 import { ImageViewer } from "./sharedViewer";
 import { PluginProps } from "..";
 import {
@@ -21,6 +25,9 @@ import { VisibilityControl } from "../../Visibility";
 import { SpineTable } from "./spineSegmentTable";
 import { COLORS_SELECTOR_OPTIONS } from "./colorPicker";
 import { color as D3Color } from "d3";
+import { Button } from "rsuite";
+import { Notification } from "rsuite";
+import { IoUnlinkSharp, IoLinkSharp } from "react-icons/io5";
 
 const DEFAULT_CONTRAST: [number, number] = [0, 2 ** 11];
 const DEFAULT_COLOR: Color[] = COLORS_SELECTOR_OPTIONS.map((color) => {
@@ -45,7 +52,7 @@ export function ImageView({
   y,
   id,
   isActive,
-  visible,
+  visible: visibleSignal,
 }: PluginProps) {
   const minimap = useSignal(false);
   const linked = useSignal(true);
@@ -56,6 +63,8 @@ export function ImageView({
   const showLineSegmentsRadius = useSignal(true);
   const target = useSignal<[number, number] | undefined>(undefined);
   const colors = useLinkedSignal<Color[]>(DEFAULT_COLOR, globalColor, linked);
+  const activeKey = signal(undefined);
+
   // Store expanded rows in the in the image view so that the state is maintained even if the inspector is not shown
   const segmentsExpandedRows = useSignal<string[]>([]);
   const contrastLimits = useLinkedSignal<[number, number][]>(
@@ -74,6 +83,7 @@ export function ImageView({
     return loader.getTimePoint(time.value);
   }, [time.value, loader]);
   const zRange = useSignal<ZRange>([35, 36]);
+  const visible = visibleSignal.value;
 
   const selections = useComputed(() =>
     channelsVisible.value.map((visible, c) => ({
@@ -129,6 +139,9 @@ export function ImageView({
     visible,
   });
 
+  const editingSegment = EDITING_SEGMENT.value;
+  const editingSegmentPath = EDITING_SEGMENT_PATH.value;
+
   useSignalEffect(() => {
     if (EDITING_SEGMENT.value || EDITING_SEGMENT_PATH.value) {
       // restrict z when segment is being edited
@@ -145,6 +158,29 @@ export function ImageView({
 
   return (
     <>
+      <NavBar>
+        {() => {
+          return (
+            <>
+              <Nav
+                activeKey={activeKey.value}
+                onSelect={(v) => (activeKey.value = v)}
+                className="flex-grow"
+              ></Nav>
+              <Nav>
+                <Nav.Item
+                  eventKey="link-view"
+                  active={linked.value}
+                  icon={linked.value ? <IoLinkSharp /> : <IoUnlinkSharp />}
+                  onClick={() => (linked.value = !linked.value)}
+                >
+                  Link Views
+                </Nav.Item>
+              </Nav>
+            </>
+          );
+        }}
+      </NavBar>
       <Inspector>
         {() => (
           <>
@@ -156,21 +192,7 @@ export function ImageView({
                   selection={zRange.value}
                 />
               </Panel>
-              <Panel header="Controls" defaultExpanded>
-                <Checkbox
-                  checked={linked.value}
-                  onChange={(_e, checked) => {
-                    batch(() => {
-                      linked.value = checked;
-                      // Snap the global store
-                      globalContrastLimits.value = contrastLimits.peek();
-                      globalChannelsVisible.value = channelsVisible.peek();
-                    });
-                  }}
-                >
-                  Linked View
-                </Checkbox>
-
+              <Panel defaultExpanded>
                 <div className="sub-title">Contrast</div>
                 <ContrastControls
                   sources={sources!}
@@ -246,6 +268,27 @@ export function ImageView({
           linked={linked.value}
           isActive={isActive}
         />
+        {(editingSegment || editingSegmentPath) && (
+          <Notification>
+            {editingSegmentPath
+              ? "Editing Segment Path"
+              : "Editing Segment Spines"}
+            <Button
+              size="sm"
+              className="float-right"
+              onClick={() => {
+                if (editingSegmentPath) {
+                  EDITING_SEGMENT_PATH.value = undefined;
+                  return;
+                }
+
+                EDITING_SEGMENT.value = undefined;
+              }}
+            >
+              Done
+            </Button>
+          </Notification>
+        )}
       </ImageViewer>
     </>
   );

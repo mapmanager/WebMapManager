@@ -176,7 +176,7 @@
     .rs-table {
       .spine {
         cursor: pointer;
-        &.invisible {
+        &.invisible-cell {
           opacity: 0.5;
         }
       }
@@ -206,11 +206,47 @@
 .sub-title {
   padding-top: 16px;
   padding-bottom: 12px;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
 }
 
 .placeholder {
   width: 100%;
   height: 100%;
   background: #1a1a1a;
+}
+
+.layout {
+  .rs-notification {
+    pointer-events: auto;
+    left: 16px;
+    top: 16px;
+    right: 38px;
+    display: block;
+    position: absolute;
+    padding-bottom: 4px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 320px;
+  }
+
+  .rs-notification-content {
+    max-width: none;
+    padding: 15px 20px;
+  }
+
+  .rs-notification-description {
+    font-weight: 700;
+  }
+
+  .rs-sidenav-nav>.rs-dropdown .rs-dropdown-toggle>.rs-icon:not(.rs-dropdown-toggle-caret), .rs-sidenav-nav>.rs-sidenav-item>svg:not(.rs-dropdown-toggle-caret) {
+    font-size: 16px;
+    height: 20px;
+    left: 20px;
+    line-height: 1.25;
+    margin-right: 20px;
+    position: absolute;
+    top: 15px;
+  }
 }

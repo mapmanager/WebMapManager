@@ -2,10 +2,10 @@ import type { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { GeoJsonLayer, PolygonLayer } from "@deck.gl/layers/typed";
 import { PathStyleExtension } from "@deck.gl/extensions/typed";
 import {
-  BinaryFeatures,
-  BinaryLineFeatures,
-  BinaryPointFeatures,
-  BinaryPolygonFeatures,
+  BinaryFeatureCollection,
+  BinaryLineFeature,
+  BinaryPointFeature,
+  BinaryPolygonFeature,
 } from "@loaders.gl/schema";
 import { useEffect, useMemo } from "react";
 import {
@@ -128,6 +128,7 @@ export function useAnnotations(
       annotationSelections,
       zRange,
     });
+
     // console.timeEnd("getAnnotations_js");
     const layers = [];
     layers.push(
@@ -362,8 +363,9 @@ function setOpacity(
   return color as any;
 }
 
-function decodeDatasetFromProxy(layerProxy: PyProxy): BinaryFeatures {
+function decodeDatasetFromProxy(layerProxy: PyProxy): BinaryFeatureCollection {
   return {
+    shape: "binary-feature-collection",
     points: decodePoints(layerProxy.get("points")),
     polygons: decodePolygons(layerProxy.get("polygons")),
     lines: decodeLines(layerProxy.get("lines")),
@@ -378,7 +380,7 @@ const defaultEntry = {
   },
 } as any;
 
-function decodePoints(layerProxy?: PyProxy): BinaryPointFeatures | undefined {
+function decodePoints(layerProxy?: PyProxy): BinaryPointFeature | undefined {
   if (!layerProxy) return defaultEntry;
   const featureIds = decodeFeatureIds(layerProxy);
 
@@ -405,7 +407,7 @@ const defaultPoly = {
 
 function decodePolygons(
   layerProxy?: PyProxy
-): BinaryPolygonFeatures | undefined {
+): BinaryPolygonFeature | undefined {
   if (!layerProxy) return defaultPoly;
   const featureIds = decodeFeatureIds(layerProxy);
   const polygonIndices = {
@@ -431,7 +433,7 @@ const defaultLines = {
   },
 };
 
-function decodeLines(layerProxy?: PyProxy): BinaryLineFeatures | undefined {
+function decodeLines(layerProxy?: PyProxy): BinaryLineFeature | undefined {
   if (!layerProxy) return defaultLines;
   const featureIds = decodeFeatureIds(layerProxy);
 

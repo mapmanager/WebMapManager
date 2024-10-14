@@ -8,7 +8,8 @@ import { TableInstance } from "rsuite/esm/Table";
 const { Column, HeaderCell, Cell } = Table;
 
 const ROW_HEIGHT = 64;
-export const TableView = ({ loader, height, visible }: PluginProps) => {
+export const TableView = ({ loader, height, visible: visibleSignal }: PluginProps) => {
+  const visible = visibleSignal.value;
   const tableRef = useRef<TableInstance<any, any>>(null);
   const [columns, names, data] = useMemo(() => {
     const stats = loader.table();
@@ -25,7 +26,6 @@ export const TableView = ({ loader, height, visible }: PluginProps) => {
     ];
   }, [loader, DATA_VERSION.value]);
 
-  const selectedSpine = SELECTED_SPINE.value;
   const SPINE_ID = columns.indexOf("spineID");
 
   useEffect(() => {

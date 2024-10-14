@@ -168,27 +168,44 @@ export class PyPixelSourceTimePoint extends AnnotatedPixelSource {
 
 export class PyPixelSource {
   #proxy: pyPixelSource;
+  #name: string;
 
-  private constructor(proxy: pyPixelSource) {
+  private constructor(proxy: pyPixelSource, name: string = "") {
     this.#proxy = proxy;
+    this.#name = name;
   }
 
   static async Load(src: ImageSource): Promise<PyPixelSource> {
     if (src instanceof PyPixelSource) return src;
     let data: ArrayBuffer;
+    let name = "map.mmap";
     if (src instanceof File) {
       data = await src.arrayBuffer();
+      name = src.name;
     } else {
       const response = await fetch(src);
       if (!response.ok)
         throw new Error(`Failed to load image: ${response.statusText}`);
 
       data = await response.arrayBuffer();
+      name = src.split("/").pop()!;
     }
 
     await py.FS.writeFile("/tmp/map.mmap", new Uint8Array(data));
     const proxy = await newPixelSource("/tmp/map.mmap");
-    return new PyPixelSource(proxy);
+    return new PyPixelSource(proxy, name);
+  }
+
+  save() {
+    this.#proxy.save();
+    const data = py.FS.readFile("/tmp/map.mmap") as Uint8Array;
+    const blob = new Blob([data], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = this.#name;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   getTimePoint(timePoint: number): PyPixelSourceTimePoint {
