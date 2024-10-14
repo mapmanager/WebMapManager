@@ -10,7 +10,6 @@ import {
 import { useEffect, useMemo } from "react";
 import { ViewSelection } from "../../../loaders/annotations";
 import { signal, useComputed, useSignal } from "@preact/signals-react";
-import { PixelSource } from "../../../loaders";
 import { PyPixelSourceTimePoint } from "../../../loaders/py_loader";
 
 const MAX_ZOOM = 4;
@@ -48,6 +47,8 @@ export const ImageViewer = ({
   ...props
 }: ImageViewerProps & { children: any }) => {
   useEffect(() => {
+    if (props.width <= 0 || props.height <= 0) return;
+
     ViewsContext.value = {
       ...ViewsContext.value,
       [props.id]: {
@@ -62,7 +63,7 @@ export const ImageViewer = ({
       delete views[props.id];
       ViewsContext.value = views;
     };
-  }, [...Object.values(props)]);
+  }, Object.values(props) as any);
 
   return <div className="ImageView">{children}</div>;
 };

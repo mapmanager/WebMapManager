@@ -47,7 +47,7 @@ function useQueryState(
   return [keyState ? attributes[keyState] : null, setKeyState];
 }
 
-export const ScatterPlotView = ({ loader, width, height }: PluginProps) => {
+export const ScatterPlotView = ({ loader, width, height, visible }: PluginProps) => {
   const dataVersion = DATA_VERSION.value;
   const [attributes, names, categorical] = useMemo(() => {
     const attributes = loader.columnsAttributes();

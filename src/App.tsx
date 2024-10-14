@@ -6,6 +6,7 @@ import Layout from "./components/layout";
 import { Button, CustomProvider, Form, Loader } from "rsuite";
 import { dataChanged } from "./components/plugins/globals";
 import { useDropzone } from "react-dropzone";
+import "@preact/signals-react/auto";
 
 interface Props {
   file: ImageSource;
@@ -59,6 +60,7 @@ function Loading() {
   if (file)
     return (
       <CustomProvider theme="dark">
+        {/* <LoadFiles setFile={setFile} file={file} background /> */}
         <App file={file} />
       </CustomProvider>
     );
@@ -75,9 +77,11 @@ function Loading() {
 function LoadFiles({
   setFile,
   file,
+  background,
 }: {
   setFile: (file: ImageSource) => void;
   file: ImageSource | undefined;
+  background?: boolean;
 }) {
   const { getRootProps, getInputProps } = useDropzone({
     onDrop(acceptedFiles, fileRejections, event) {
@@ -91,6 +95,26 @@ function LoadFiles({
       }
     },
   });
+
+  if (background) {
+    return (
+      <Form layout="inline" onSubmit={({ url }: any) => setFile(url)}>
+        <div
+          {...getRootProps({
+            style: {
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            },
+          })}
+        >
+          <input {...getInputProps()} />
+        </div>
+      </Form>
+    );
+  }
 
   return (
     <div className="loading-container">
