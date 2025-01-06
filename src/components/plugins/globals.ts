@@ -2,16 +2,6 @@ import { signal } from "@preact/signals-react";
 import { isAltKeyDown, isShiftKeyDown } from "../utils";
 
 /**
- * Global signal to track which segment is being edited.
- */
-export const EDITING_SEGMENT = signal<number | undefined>(undefined);
-
-/**
- * Global signal to track which segment path is being edited.
- */
-export const EDITING_SEGMENT_PATH = signal<number | undefined>(undefined);
-
-/**
  * Global signal to track which segment is selected.
  */
 export const SELECTED_SEGMENT = signal<number | undefined>(undefined);

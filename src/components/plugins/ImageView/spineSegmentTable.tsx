@@ -2,15 +2,13 @@ import React, { useCallback, useMemo } from "react";
 import { Table } from "rsuite";
 import {
   DATA_VERSION,
-  EDITING_SEGMENT,
-  EDITING_SEGMENT_PATH,
   FILTERS,
   SELECTED_SEGMENT,
   SELECTED_SPINE,
   dataChanged,
 } from "../globals";
 import { Signal, batch } from "@preact/signals-react";
-import { ZRange } from ".";
+import { SegmentEditMode, ZRange } from ".";
 import { PyPixelSourceTimePoint } from "../../../loaders/py_loader";
 import { IconButton } from "rsuite";
 import PlusIcon from "@rsuite/icons/Plus";
@@ -22,6 +20,8 @@ interface SpineTableProps {
   loader: PyPixelSourceTimePoint;
   expandedRows: Signal<string[]>;
   selection: ZRange;
+  editingSegmentSignal: Signal<number | undefined>;
+  editMode: Signal<SegmentEditMode>;
 }
 
 const SelectableCell = ({
@@ -92,6 +92,8 @@ export const SpineTable = ({
   loader,
   selection,
   expandedRows,
+  editingSegmentSignal,
+  editMode,
 }: SpineTableProps) => {
   const filter = FILTERS.value;
 
@@ -120,26 +122,16 @@ export const SpineTable = ({
     return segments.map((seg) => ({
       id: "segment" + seg.get("segmentID"),
       _id: Number(seg.get("segmentID")),
-      title: "Segment " + Number(seg.get("segmentID")),
+      title: "Segment " + (Number(seg.get("segmentID"))),
       segment: true,
       onClick: (id: number) => {
         if (loader.deleteSegment(id)) {
           batch(() => {
-            console.log(
-              "Deleted segment",
-              id,
-              EDITING_SEGMENT_PATH.peek(),
-              SELECTED_SEGMENT.peek(),
-              EDITING_SEGMENT.peek()
-            );
-            if (EDITING_SEGMENT_PATH.peek() === id) {
-              EDITING_SEGMENT_PATH.value = undefined;
-            }
             if (SELECTED_SEGMENT.peek() === id) {
               SELECTED_SEGMENT.value = undefined;
             }
-            if (EDITING_SEGMENT.peek() === id) {
-              EDITING_SEGMENT.value = undefined;
+            if (editingSegmentSignal.peek() === id) {
+              editingSegmentSignal.value = undefined;
             }
             dataChanged();
           });
@@ -148,12 +140,12 @@ export const SpineTable = ({
       children: seg.get("spines").map((d) => ({
         id: Number(d.get("id")),
         _id: Number(d.get("id")),
-        title: "" + Number(d.get("id")),
+        title: "" + (Number(d.get("id"))),
         type: d.get("type"),
         invisible: d.get("invisible"),
       })),
     }));
-  }, [loader, selection, filter, DATA_VERSION.value]);
+  }, [loader, selection, filter, DATA_VERSION.value, editingSegmentSignal]);
 
   const selectedSpineId = SELECTED_SPINE.value;
   return (
@@ -200,14 +192,15 @@ export const SpineTable = ({
             size="xs"
             icon={<PlusIcon />}
             className="icon-button"
+            disabled={loader!.shape[0] === 0}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               e.currentTarget.blur();
               const id = Number(loader.newSegment());
-              EDITING_SEGMENT.value = id;
-              EDITING_SEGMENT_PATH.value = id;
+              editingSegmentSignal.value = id;
               SELECTED_SEGMENT.value = id;
+              editMode.value = SegmentEditMode.Path;
               dataChanged();
             }}
           />

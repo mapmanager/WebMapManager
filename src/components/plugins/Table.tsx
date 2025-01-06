@@ -8,7 +8,11 @@ import { TableInstance } from "rsuite/esm/Table";
 const { Column, HeaderCell, Cell } = Table;
 
 const ROW_HEIGHT = 64;
-export const TableView = ({ loader, height, visible: visibleSignal }: PluginProps) => {
+export const TableView = ({
+  loader,
+  height,
+  visible: visibleSignal,
+}: PluginProps) => {
   const visible = visibleSignal.value;
   const tableRef = useRef<TableInstance<any, any>>(null);
   const [columns, names, data] = useMemo(() => {
@@ -18,7 +22,7 @@ export const TableView = ({ loader, height, visible: visibleSignal }: PluginProp
     const attributes = loader.columnsAttributes();
     return [
       columns.toJs(),
-      columns.map((column: string) => attributes[column].title),
+      columns.map((column: string) => attributes[column]?.title ?? column),
       stats.values
         .tolist()
         .toJs()
@@ -43,7 +47,7 @@ export const TableView = ({ loader, height, visible: visibleSignal }: PluginProp
       <Table
         ref={tableRef}
         height={height}
-        onRowClick={({data}) => (SELECTED_SPINE.value = data[SPINE_ID])}
+        onRowClick={({ data }) => (SELECTED_SPINE.value = data[SPINE_ID])}
         data={data}
         rowHeight={ROW_HEIGHT}
         headerHeight={90}
@@ -52,7 +56,11 @@ export const TableView = ({ loader, height, visible: visibleSignal }: PluginProp
           return (
             <Column key={name} width={100} resizable>
               <HeaderCell>{names[index]}</HeaderCell>
-              <Cell fullText>{(rowData) => rowData.data[index]}</Cell>
+              <Cell fullText>{(rowData) => {
+                const data = rowData.data[index];
+                if (Number.isNaN(data)) return "Invalid";
+                return data;
+        }}</Cell>
             </Column>
           );
         })}

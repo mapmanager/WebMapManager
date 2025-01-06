@@ -75,7 +75,7 @@ const DEFAULT_OVERVIEW = {
   maximumHeight: 150,
   margin: 8,
   scale: 0.2,
-  position: "bottom-left",
+  position: "top-left",
   clickCenter: true,
 };
 
@@ -92,12 +92,12 @@ export const ImageViewerRoot = ({ children }: { children: any[] }) => {
   const viewsProps = ViewsContext.value;
 
   const [views, layerProps, layers] = useMemo(() => {
-    // const loaderArray = [loader];
     const viewsProps_ = Object.values(viewsProps);
 
     const linkedIds = viewsProps_
       .filter(({ linked }) => linked)
       .map(({ id }) => id);
+
     const views = viewsProps_.map(
       ({ id, height, width, x, y, linked }) =>
         new SideBySideViewController({

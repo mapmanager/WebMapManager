@@ -27,6 +27,7 @@
 #inspector {
   width: 350px;
   height: 100%;
+  position: relative;
   background: #1a1a1a;
   overflow-y: scroll;
   border-left: 1px rgb(50, 50, 50) solid;
@@ -160,6 +161,7 @@
   left: 0;
   width: 100%;
   height: 100%;
+  z-index: 1000;
   background: rgba(0, 0, 0, 1);
 }
 
@@ -192,6 +194,19 @@
     background: #00000000;
     font-weight: 800;
   }
+
+  .rs-sidenav-item-disabled {
+    opacity: 0.45;
+  }
+
+  .rs-tree-node-label {
+    width: 100%;
+  }
+
+  .rs-tree-view {
+    max-height: none;
+    padding: 8px;
+  }
 }
 
 .rs-theme-dark {
@@ -206,7 +221,7 @@
     --rs-primary-700: #4b75b8;
     --rs-primary-800: #2250a1;
     --rs-primary-900: #012e82;
-  
+
     // Spectrum
     --rs-color-red: #f44336;
     --rs-color-orange: #fa8900;

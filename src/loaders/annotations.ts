@@ -53,14 +53,14 @@ export abstract class AnnotatedPixelSource implements PixelSource<Label> {
     this.spineStats = spineStats;
   }
 
-  abstract get shape(): [number, number, number, number];
+  abstract get shape(): [number, number, number];
 
   get tileSize(): number {
-    return this.shape[3];
+    return this.shape[2];
   }
 
   public get z(): number {
-    return this.shape[1];
+    return this.shape[0];
   }
 
   // @ts-ignore: Selection should be converted to src type prior to calling super.
