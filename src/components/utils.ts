@@ -3,18 +3,42 @@ import { ViewSelection } from "../loaders/annotations";
 import { PyPixelSource, PyPixelSourceTimePoint } from "../loaders/py_loader";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
 import {
-  EDITING_SEGMENT,
-  EDITING_SEGMENT_PATH,
+  DATA_VERSION,
   SELECTED_SEGMENT,
   SELECTED_SPINE,
   setFilters,
 } from "./plugins/globals";
 import { pyImageSource } from "../python";
 
-export type ImageSource = string | File;
+export class EmptyImageSource {}
+
+export type ImageSource = string | File | EmptyImageSource;
 
 export let isShiftKeyDown = false;
 export let isAltKeyDown = false;
+
+class Notifier {
+  #counter = 0;
+  #listeners = new Map<number, () => boolean | void>();
+
+  addListener(listener: () => boolean | void): () => void {
+    const id = this.#counter++;
+    this.#listeners.set(id, listener);
+    return () => {
+      this.#listeners.delete(id);
+    };
+  }
+
+  notify() {
+    for (const listener of this.#listeners.values()) {
+      if (listener()) return true;
+    }
+
+    return false;
+  }
+}
+
+export const onEscape = new Notifier();
 
 /**
  * An event listener to keep track of shortcuts
@@ -25,22 +49,8 @@ window.addEventListener(
     isAltKeyDown = event.altKey;
     isShiftKeyDown = event.shiftKey;
     if (event.key === "Escape") {
-      if (EDITING_SEGMENT_PATH.peek()) {
-        EDITING_SEGMENT_PATH.value = undefined;
-        return;
-      }
-
-      if (SELECTED_SPINE.peek()) {
-        SELECTED_SPINE.value = undefined;
-        return;
-      }
-
-      if (EDITING_SEGMENT.peek()) {
-        EDITING_SEGMENT.value = undefined;
-        return;
-      }
+      if (onEscape.notify()) return;
       SELECTED_SPINE.value = undefined;
-      EDITING_SEGMENT.value = undefined;
       SELECTED_SEGMENT.value = undefined;
       setFilters(undefined);
     }
@@ -97,24 +107,6 @@ export function useLinkedSignal<T>(
 }
 
 /**
- * Loads an pixel source from an async loader
- * @param src the image source
- */
-export function useImageLoader(src: ImageSource): {
-  loader?: PyPixelSource;
-  error?: Error;
-  loading: boolean;
-} {
-  const {
-    value: loader,
-    error,
-    loading,
-  } = useAsync(async () => await PyPixelSource.Load(src as any), [src]);
-  if (!loader) return { error, loading };
-  return { loader, error, loading };
-}
-
-/**
  * Loads rasters from the images based on a selection
  * @param loader the loader to load the image from
  * @param selections the slices & time segments to load
@@ -154,19 +146,20 @@ export function useRasterSources(
   error?: Error;
   loading: boolean;
 } {
+  const version = DATA_VERSION.value;
   const {
     value: sources,
     error,
     loading,
   } = useAsync(async () => {
-    if (!loader) return [];
+    if (!loader || loader.shape[0] === 0) return [];
     const futures = selections.map((selection) => {
       if (!selection.visible) return Promise.resolve(undefined);
       return loader.source(selection);
     });
 
     return await Promise.all(futures);
-  }, [loader, selections]);
+  }, [loader, selections, version]);
 
   return { sources, error, loading };
 }

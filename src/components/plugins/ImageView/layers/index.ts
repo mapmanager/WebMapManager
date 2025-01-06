@@ -11,11 +11,9 @@ import { useEffect, useMemo } from "react";
 import {
   DATA_VERSION,
   FILTERS,
-  EDITING_SEGMENT,
   SELECTED_SPINE,
   SELECTED_SEGMENT,
   dataChanged,
-  EDITING_SEGMENT_PATH,
 } from "../../globals";
 import { AnnotationsOptions } from "../../../../python";
 import { PickingInfo } from "@deck.gl/core/typed";
@@ -24,22 +22,19 @@ import { PyPixelSourceTimePoint } from "../../../../loaders/py_loader";
 import { PyProxy, TypedArray } from "pyodide/ffi";
 import { OutlinePathExtension } from "./outlineExtension";
 import { isShiftKeyDown } from "../../../utils";
-import { ZRange } from "..";
+import { SegmentEditMode, ZRange } from "..";
 
 export interface AnnotationsProps extends AnnotationsOptions {
   id: string;
   loader: PyPixelSourceTimePoint;
   visible: boolean;
+  isActive: boolean;
+  editingSegmentSignal: Signal<number | undefined>;
+  editMode: Signal<SegmentEditMode>;
 }
 
 const textSizeMinPixels = 10;
 const textSizeMaxPixels = 13;
-const AnnotationSelections = {
-  segmentID: SELECTED_SEGMENT,
-  segmentIDEditing: EDITING_SEGMENT,
-  segmentIDEditingPath: EDITING_SEGMENT_PATH,
-  spineID: SELECTED_SPINE,
-} as Record<string, Signal<number | undefined>>;
 
 enum State {
   start = 0,
@@ -82,23 +77,28 @@ export function useAnnotations(
     showLabels,
     showLineSegments,
     showLineSegmentsRadius,
+    showLineSegmentsOrigin,
     showSpines,
     zRange,
     visible,
+    isActive,
+    editingSegmentSignal,
+    editMode: editModeSignal,
   } = options;
   const filters = FILTERS.value;
   const selectedSegment = SELECTED_SEGMENT.value;
-  const editingSegment = EDITING_SEGMENT.value;
-  const editingSegmentPath = EDITING_SEGMENT_PATH.value;
+  const editingSegment = editingSegmentSignal.value;
   const selectedSpine = SELECTED_SPINE.value;
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (!isActive) return;
+
       if (event.key === "Backspace") {
-        if (loader.onDelete()) return dataChanged();
-        if (!EDITING_SEGMENT.peek()) return;
+        if (loader?.onDelete()) return dataChanged();
+        if (editingSegmentSignal.peek() === undefined) return;
         const spine = SELECTED_SPINE.peek();
-        if (!spine) return;
+        if (spine === undefined) return;
         loader.deleteSpine(spine);
         SELECTED_SPINE.value = undefined;
         dataChanged(); // TODO: Localize update
@@ -106,16 +106,23 @@ export function useAnnotations(
     };
     window.addEventListener("keydown", onKeyDown, { passive: true });
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [loader]);
+  }, [loader, isActive]);
 
+  const editMode = editModeSignal.value;
   const layers = useMemo(() => {
     if (!visible) return [];
+    const AnnotationSelections = {
+      segmentID: SELECTED_SEGMENT,
+      segmentIDEditing: editingSegmentSignal,
+      spineID: SELECTED_SPINE,
+    } as Record<string, Signal<number | undefined>>;
+
     // console.time("getAnnotations_js");
     const annotationSelections = {
       segmentID: selectedSegment,
       segmentIDEditing: editingSegment,
-      segmentIDEditingPath: editingSegmentPath,
       spineID: selectedSpine,
+      editMode: editingSegment === undefined ? undefined : editMode,
     } as Record<string, number | undefined>;
 
     const datasets = loader.getAnnotations({
@@ -123,6 +130,8 @@ export function useAnnotations(
       showLabels,
       showLineSegments,
       showLineSegmentsRadius,
+      showLineSegmentsOrigin:
+        showLineSegmentsOrigin || editMode === SegmentEditMode.SetOrigin,
       showSpines,
       filters,
       annotationSelections,
@@ -131,34 +140,6 @@ export function useAnnotations(
 
     // console.timeEnd("getAnnotations_js");
     const layers = [];
-    layers.push(
-      new PolygonLayer({
-        id: `-#${id}#-annotations-bg-selection`,
-        data: [
-          [
-            [-2000, -2000],
-            [-2000, 2000],
-            [2000, 2000],
-            [2000, -2000],
-            [-2000, -2000],
-          ],
-        ],
-        pickable: true,
-        filled: true,
-        getPolygon: (x) => x,
-        onClick: (pickingInfo: PickingInfo) => {
-          if (!selectedSegment || !isShiftKeyDown) return;
-          const [x, y] = pickingInfo.coordinate!;
-          const z = (zRange[1] + zRange[0]) / 2;
-          const newSpineId = loader.addSpine(selectedSegment, x, y, z);
-          if (newSpineId) {
-            dataChanged();
-            SELECTED_SPINE.value = newSpineId;
-          }
-        },
-        getFillColor: [0, 0, 0, 0],
-      })
-    );
 
     for (let i = 0; i < datasets.length; i++) {
       const layerProxy = datasets[i];
@@ -212,14 +193,24 @@ export function useAnnotations(
             return;
           }
 
-          const key = 2 === event.tapCount ? interactions[1] : interactions[0];
-          if (!key) return;
+          const editing = 2 === event.tapCount;
+          const key = editing ? interactions[1] : interactions[0];
+          if (key === undefined || key === null) return;
           const selection = (pickingInfo.sourceLayer?.props.data as any)
             .properties[pickingInfo.index]?.id;
           if (!selection) return;
+          if (editing) {
+            editModeSignal.value = key;
+            editingSegmentSignal.value = Number(selection);
+            return;
+          }
+
           const selector = AnnotationSelections[key];
           if (!selector) return;
           selector.value = Number(selection);
+          if (key === "segmentIDEditing") {
+            editModeSignal.value = SegmentEditMode.MoveSpine;
+          }
         },
         onHover: hover
           ? (pickingInfo: PickingInfo) => {
@@ -332,6 +323,48 @@ export function useAnnotations(
       layers.push(layer);
     }
 
+    const eventLayer = new PolygonLayer({
+      id: `-#${id}#-annotations-bg-selection`,
+      data: [
+        [
+          [-2000, -2000],
+          [-2000, 2000],
+          [2000, 2000],
+          [2000, -2000],
+          [-2000, -2000],
+        ],
+      ],
+      pickable: true,
+      filled: true,
+      getPolygon: (x) => x,
+      onClick: (pickingInfo: PickingInfo) => {
+        if (editingSegment === undefined || !isActive) return;
+
+        const [x, y] = pickingInfo.coordinate!;
+        const z = Math.trunc((zRange[1] + zRange[0]) / 2);
+        
+        const mode = editModeSignal.peek();
+
+        // if (mode === SegmentEditMode.SetOrigin) {
+        //   if (loader.setSegmentOrigin(editingSegment, x, y, z)) {
+        //     dataChanged();
+        //   }
+        //   return;
+        // }
+
+        if (isShiftKeyDown || mode === SegmentEditMode.AddSpine) {
+          const newSpineId = loader.addSpine(editingSegment, x, y, z);
+          if (newSpineId !== undefined) {
+            dataChanged();
+            SELECTED_SPINE.value = newSpineId;
+          }
+        }
+      },
+      getFillColor: [0, 0, 0, 0],
+    });
+
+    layers.unshift(eventLayer);
+
     return layers;
   }, [
     id,
@@ -341,6 +374,7 @@ export function useAnnotations(
     showLabels,
     showLineSegments,
     showLineSegmentsRadius,
+    showLineSegmentsOrigin,
     showSpines,
     filters,
     selectedSegment,
@@ -348,7 +382,10 @@ export function useAnnotations(
     selectedSpine,
     visible,
     pendingEditVersion,
-    editingSegmentPath,
+    editingSegmentSignal,
+    isActive,
+    editMode,
+    selectionSignal,
   ]);
 
   return layers as any;

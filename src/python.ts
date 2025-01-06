@@ -2,9 +2,11 @@ import { PyProxy } from "pyodide/ffi";
 import { ZRange } from "./components/plugins/ImageView";
 // @ts-ignore
 import requirements from "./MapManagerCore/requirements.json";
+import { Position } from "./loaders/py_loader";
 
 // Load python
 globalThis.py = await window.loadPyodide().then(async (py) => {
+  py.setDebug("production" !== process.env.NODE_ENV);
   if (requirements.micropip.length > 0) {
     requirements.loadPackage.push("micropip");
   }
@@ -53,6 +55,7 @@ export interface AnnotationsOptions {
 
   // View toggles
   showLineSegments?: boolean;
+  showLineSegmentsOrigin?: boolean;
   showLineSegmentsRadius?: boolean;
   showLabels?: boolean;
   showAnchors?: boolean;
@@ -106,6 +109,13 @@ export interface pyPixelSourceTimePoint {
     z: number
   ): number | undefined;
 
+  setSegmentOrigin(
+    segmentId: number,
+    x: number,
+    y: number,
+    z: number
+  ): number | undefined;
+
   newSegment(): number;
 
   shape: any;
@@ -132,22 +142,62 @@ export interface pyPixelSourceTimePoint {
 
 export interface pyPixelSource {
   timePoint_js(timePoint: number): pyPixelSourceTimePoint;
+  metadata_json(timePoint: number): string;
 
   columnsAttributes_json(): string;
   getColumn(name: string): Promise<pdSeries>;
   getColors(name?: string): Promise<pdSeries>;
   getSymbols(name?: string): Promise<pdSeries>;
+  mergeFile(
+    path: string,
+    timePoint: number | undefined,
+    channel: number | undefined,
+    name: string | undefined,
+    dropNodePosition: Position | undefined
+  ): Promise<void>;
   table(): Promise<pdDataFrame>;
 
   undo(): void;
   redo(): void;
 
-  save(): void;
+  save(path: string): void;
+
+  appendChannelToTimePoint(
+    srcTimePoint: number,
+    srcChannel: number,
+    destTimePoint: number
+  ): any;
+
+  moveChannel(
+    srcTimePoint: number,
+    srcChannel: number,
+    destTimePoint: number,
+    destChannel: number,
+  ): any;
+
+  moveTimePoint(
+    srcTimePoint: number,
+    destTimePoint: number,
+    dropNodePosition: Position
+  ): any;
+  createTimePoint(): any;
+  dataTree(): any;
+  deleteTimePoint(timePoint: number): any;
+  deleteChannel(timePoint: number, channel: number): any;
+  updateChannel(
+    timePoint: number,
+    channel: number,
+    updates: Record<string, any>
+  ): any;
+  updateTimePoint(timePoint: number, updates: Record<string, any>): any;
+  maxChannels(): any;
+  timePoints_js(): any;
+  setMaxChannels(maxChannels: number): any;
 }
 
 const newPixelSource = (await py.runPythonAsync(`
 from mapmanagercore.pyodide_main import createAnnotations
 createAnnotations
-`)) as (srcPath: string) => Promise<pyPixelSource>;
+`)) as (srcPath?: string) => Promise<pyPixelSource>;
 
 export { newPixelSource };

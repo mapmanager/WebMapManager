@@ -8,14 +8,12 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useState,
 } from "react";
 import { createPortal } from "react-dom";
 import { ImageViewerRoot } from "../plugins/ImageView/sharedViewer";
 import { AddNew } from "./newDropdown";
 import { signal } from "@preact/signals-react";
 import { MainNavBar, NavBarElements } from "../../nav";
-import { Nav } from "rsuite";
 
 const inspectorDiv = document.getElementById("inspector") as HTMLElement;
 
@@ -37,8 +35,8 @@ const InitialStateJson: FlexLayout.IJsonModel = {
         children: [
           {
             type: "tab",
-            component: "ImageView",
-            name: "Image",
+            component: "Loader",
+            name: "Loader",
           },
         ],
       },
@@ -212,16 +210,16 @@ export const Inspector = ({
 export const NavBar = ({
   children: Children,
 }: {
-  children: () => ReactElement<{}, any>;
+  children: undefined | (() => ReactElement<{}, any>);
 }) => {
   const active = useContext(ActiveInspectorContext);
   useEffect(() => {
-    if (!active) return;
+    if (!active || !Children) return;
 
-    NavBarElements.value = <Children />;
+    NavBarElements.value = Children;
 
     return () => {
-      NavBarElements.value = <></>;
+      NavBarElements.value = undefined;
     };
   }, [active, Children]);
 

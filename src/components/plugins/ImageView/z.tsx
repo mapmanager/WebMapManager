@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import React, { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ZRange } from ".";
 import { Signal } from "@preact/signals-react";
 
@@ -22,15 +22,20 @@ interface SharedEvent {
 
 export function ZScroll({
   selection,
-  height,
   length,
   linked,
   isActive,
+  height,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const hover = useRef(false);
+  const [minRange, setMinRange] = useState<string | undefined>(undefined);
+  const [maxRange, setMaxRange] = useState<string | undefined>(undefined);
+  const isHovering = hover.current;
+  const range = selection.value;
   const roundSelection = useCallback(
-    (selection: any) => {
-      if (selection[1] < selection[0]) {
+    (selection: any, invert = true) => {
+      if (selection[1] < selection[0] && invert) {
         let temp = selection[0];
         selection[0] = selection[1];
         selection[1] = temp;
@@ -43,6 +48,7 @@ export function ZScroll({
         end = length;
         start = end - distance;
       }
+      start = Math.max(start, 0);
 
       return [start, end] as any;
     },
@@ -121,7 +127,10 @@ export function ZScroll({
       .attr("height", yBand.bandwidth())
       .attr("y", yBand as any);
 
-    slides.attr("height", yBand.bandwidth()).attr("y", yBand as any);
+    slides
+      .attr("width", "70%")
+      .attr("height", yBand.bandwidth())
+      .attr("y", yBand as any);
 
     const brushEl = svg.select(".brush");
     const brush = d3
@@ -188,10 +197,7 @@ export function ZScroll({
 
     brushEl
       .call(brush as any)
-      .call(
-        brush.move as any,
-        toSlide(roundSelection(selection.peek() as any))
-      )
+      .call(brush.move as any, toSlide(roundSelection(selection.peek() as any)))
       .select(".overlay")
       .call(drag as any);
 
@@ -208,6 +214,17 @@ export function ZScroll({
 
     const handler = (event: KeyboardEvent) => {
       const { key, shiftKey } = event;
+
+      // Check if the user is editing a text field
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA" ||
+          (activeElement as any).isContentEditable)
+      ) {
+        return;
+      }
 
       const scale = yBand.step() * (shiftKey ? SHIFT_SKIP : 1);
       if (key === "ArrowDown") {
@@ -227,21 +244,96 @@ export function ZScroll({
     };
   }, [
     svgRef,
-    height,
     length,
     selection,
     selection.value,
     linked,
     roundSelection,
     isActive,
+    isHovering,
+    height,
   ]);
 
   if (!isActive) return <></>;
 
   return (
-    <svg ref={svgRef} className="z-control">
-      <g className="slides" />
-      <g className="brush" />
-    </svg>
+    <div className="z-control flex flex-col gap-1 pt-1 pb-1 pointer-events-auto">
+      <div className="text-center opacity-55">z</div>
+      <input
+        className="text-center text-xxs pointer-events-auto outline-none bg-transparent"
+        onChange={(e) => {
+          const value = parseInt(e.target.value) - 1;
+          if (isNaN(value)) {
+            setMinRange("");
+            return;
+          }
+          setMinRange(undefined);
+          const state = selection.peek();
+          selection.value = roundSelection([value, state[1]], false);
+        }}
+        onKeyDown={(e) => {
+          const scale = 1 * (e.shiftKey ? SHIFT_SKIP : 1);
+          if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur();
+          else if (e.key === "ArrowDown") {
+            const state = selection.peek();
+            selection.value = roundSelection(
+              [state[0] - scale, state[1]],
+              false
+            );
+          } else if (e.key === "ArrowUp") {
+            const state = selection.peek();
+            selection.value = roundSelection(
+              [state[0] + scale, state[1]],
+              false
+            );
+          }
+        }}
+        value={minRange ?? range[0] + 1}
+      />
+      <svg ref={svgRef} className="z-slides">
+        <g className="slides" />
+        <g
+          className="brush"
+          onMouseOver={() => {
+            hover.current = true;
+          }}
+          onMouseOut={() => {
+            hover.current = false;
+          }}
+        />
+      </svg>
+      <input
+        className="text-center text-xxs pointer-events-auto outline-none bg-transparent"
+        onChange={(e) => {
+          const value = parseInt(e.target.value);
+          if (isNaN(value)) {
+            if (e.target.value === "") setMaxRange("");
+            return;
+          }
+
+          setMaxRange(undefined);
+          const state = selection.peek();
+          selection.value = roundSelection([state[0], value], false);
+        }}
+        onKeyDown={(e) => {
+          const scale = 1 * (e.shiftKey ? SHIFT_SKIP : 1);
+          if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur();
+          else if (e.key === "ArrowDown") {
+            const state = selection.peek();
+            selection.value = roundSelection(
+              [state[0], state[1] - scale],
+              false
+            );
+          } else if (e.key === "ArrowUp") {
+            const state = selection.peek();
+            selection.value = roundSelection(
+              [state[0], state[1] + scale],
+              false
+            );
+          }
+        }}
+        value={maxRange ?? range[1]}
+      />
+    </div>
   );
 }

@@ -62,7 +62,7 @@ export const AddNew = ({ node }: Props) => {
             key={pluginName}
             onClick={() => addNew(node, pluginName)}
           >
-            New {(plugin as any).title ?? pluginName}
+            {(plugin as any).title ?? pluginName}
           </Dropdown.Item>
         );
       })}
