@@ -28,6 +28,7 @@ export const TableView = ({
         .toJs()
         .map((data: any[]) => ({ data })),
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loader, DATA_VERSION.value]);
 
   const SPINE_ID = columns.indexOf("spineID");

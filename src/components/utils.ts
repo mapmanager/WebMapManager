@@ -1,6 +1,6 @@
 import { useAsync } from "react-use";
 import { ViewSelection } from "../loaders/annotations";
-import { PyPixelSource, PyPixelSourceTimePoint } from "../loaders/py_loader";
+import { PyPixelSourceTimePoint } from "../loaders/py_loader";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
 import {
   DATA_VERSION,
