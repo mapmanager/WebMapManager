@@ -7,10 +7,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
 } from "react";
 import { createPortal } from "react-dom";
 import { ImageViewerRoot } from "../plugins/ImageView/sharedViewer";
 import { AddNew } from "./newDropdown";
+import { signal } from "@preact/signals-react";
+import { MainNavBar, NavBarElements } from "../../nav";
 
 const inspectorDiv = document.getElementById("inspector") as HTMLElement;
 
@@ -18,12 +21,26 @@ const inspectorDiv = document.getElementById("inspector") as HTMLElement;
 const ActiveInspectorContext = createContext<boolean>(false);
 
 const InitialStateJson: FlexLayout.IJsonModel = {
-  global: { tabEnableFloat: false },
   borders: [],
+  global: {},
   layout: {
     type: "row",
     weight: 100,
-    children: [],
+    children: [
+      {
+        type: "tabset",
+        weight: 50,
+        selected: 0,
+        active: true,
+        children: [
+          {
+            type: "tab",
+            component: "Loader",
+            name: "Loader",
+          },
+        ],
+      },
+    ],
   },
 };
 
@@ -56,7 +73,8 @@ const onMouseDown: MouseEventHandler<HTMLDivElement> = (event) => {
 
     // Find and select the tab
     Model.visitNodes((node) => {
-      if (!(node instanceof FlexLayout.TabNode) || !node.isVisible()) return;
+      if (!(node instanceof FlexLayout.TabNode) || !(node as any).visible)
+        return;
       if (!isPointInTab(x, y, node)) return;
       Model.doAction(FlexLayout.Actions.selectTab(node.getId()));
     });
@@ -70,59 +88,49 @@ const onRenderTabSet = (
   renderValues.stickyButtons.push(<AddNew key="add" node={node} />);
 };
 
-const titleFactory: FlexLayout.TitleFactory = (node) => {
-  const component = node.getComponent();
-  return (Plugins as any)[component!]["title"] ?? component;
+const activeTabSetId = signal(
+  Model.getActiveTabset()?.getSelectedNode()?.getId()
+);
+const onModelChange = (model: FlexLayout.Model) => {
+  const oldActiveTabSetId = activeTabSetId.peek();
+  const newActiveTabSetId = model.getActiveTabset()?.getSelectedNode()?.getId();
+  if (oldActiveTabSetId === newActiveTabSetId) return;
+  activeTabSetId.value = newActiveTabSetId;
 };
 
 export default function Layout<Props>(props: Props) {
   const factory = useCallback(
-    (node: FlexLayout.TabNode) => {
-      const model = node.getModel();
-      let visible = node.isVisible();
-      const key = node.getId();
-      const isActive =
-        model.getActiveTabset()?.getSelectedNode()?.getId() === key;
-      const component = node.getComponent();
-      const rect = node.getRect();
-
-      const maximized = model.getMaximizedTabset();
-      if (maximized) {
-        const maximizedNode = maximized.getSelectedNode();
-        if (maximizedNode && maximizedNode.getId() !== key) {
-          visible = false;
-        }
-      }
-
-      return (
-        <Container
-          key={key}
-          activeKey={key}
-          isActive={isActive}
-          props={props}
-          Component={(Plugins as any)[component!]}
-          rect={rect}
-          visible={visible}
-          node={node}
-        />
-      );
-    },
+    (node: FlexLayout.TabNode) => <Container props={props} node={node} />,
     [props]
   );
 
   return (
-    <div id="layout-grid-container" onMouseDown={onMouseDown}>
-      <ImageViewerRoot {...(props as any)}>
-        <FlexLayout.Layout
-          model={Model}
-          factory={factory}
-          onRenderTabSet={onRenderTabSet}
-          titleFactory={titleFactory}
-          onTabSetPlaceHolder={onTabSetPlaceHolder}
-        />
-      </ImageViewerRoot>
+    <div id="root-application">
+      <MainNavBar loader={(props as any).loader} />
+      <div id="layout-grid-container" onMouseDown={onMouseDown}>
+        <ImageViewerRoot {...(props as any)}>
+          <FlexLayout.Layout
+            model={Model}
+            factory={factory}
+            onModelChange={onModelChange}
+            onRenderTabSet={onRenderTabSet}
+            onRenderTab={onRenderTab}
+            onTabSetPlaceHolder={onTabSetPlaceHolder}
+          />
+        </ImageViewerRoot>
+      </div>
     </div>
   );
+}
+
+function onRenderTab(
+  node: FlexLayout.TabNode,
+  renderValues: FlexLayout.ITabRenderValues
+) {
+  if (renderValues.content !== "[Unnamed Tab]") return;
+  const component = node.getComponent();
+  const title = (Plugins as any)[component!]["title"] ?? component;
+  renderValues.content = title;
 }
 
 const onTabSetPlaceHolder = (node: FlexLayout.TabSetNode) => (
@@ -134,14 +142,35 @@ const onTabSetPlaceHolder = (node: FlexLayout.TabSetNode) => (
  */
 const Container = (props: any) => {
   const {
-    activeKey,
-    isActive,
-    Component,
-    rect,
-    visible,
     node,
     props: cProps,
+  }: {
+    node: FlexLayout.TabNode;
+    props: any;
   } = props;
+
+  const model = node.getModel();
+  const key = node.getId();
+  const isActive = activeTabSetId.value === key;
+  const component = node.getComponent();
+  const Component = (Plugins as any)[component!];
+  const rect = node.getRect();
+  const visible = signal((node as any).visible);
+
+  useEffect(() => {
+    node.setEventListener("visibility", ({ visible: newVisible }) => {
+      if (newVisible === visible.peek()) return;
+      visible.value = newVisible;
+    });
+  }, [node, visible]);
+
+  const maximized = model.getMaximizedTabset();
+  if (maximized) {
+    const maximizedNode = maximized.getSelectedNode();
+    if (maximizedNode && maximizedNode.getId() !== key) {
+      if (visible.peek()) visible.value = false;
+    }
+  }
 
   return (
     <ActiveInspectorContext.Provider value={isActive}>
@@ -150,7 +179,7 @@ const Container = (props: any) => {
         width={rect.width}
         x={rect.x}
         y={rect.y}
-        id={activeKey}
+        id={key}
         isActive={isActive}
         visible={visible}
         node={node}
@@ -171,5 +200,28 @@ export const Inspector = ({
 }) => {
   const active = useContext(ActiveInspectorContext);
   if (active) return createPortal(children(), inspectorDiv);
+  return <></>;
+};
+
+/**
+ * Nev bar for components. All the children of the nave bar component are
+ * attached to the global nave bar when the view is active.
+ */
+export const NavBar = ({
+  children: Children,
+}: {
+  children: undefined | (() => ReactElement<{}, any>);
+}) => {
+  const active = useContext(ActiveInspectorContext);
+  useEffect(() => {
+    if (!active || !Children) return;
+
+    NavBarElements.value = Children;
+
+    return () => {
+      NavBarElements.value = undefined;
+    };
+  }, [active, Children]);
+
   return <></>;
 };

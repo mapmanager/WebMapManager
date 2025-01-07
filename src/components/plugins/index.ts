@@ -7,6 +7,7 @@
  * component. The provided title will be used as the default tab name.
  */
 
+import { Signal } from "@preact/signals-react";
 import { PixelSource } from "../../loaders/";
 
 /**
@@ -28,10 +29,11 @@ export interface PluginProps {
   // Whether the current tab is active or not
   isActive: boolean;
   // Whether the current tab is visible or not
-  visible: boolean;
+  visible: Signal<boolean>;
 }
 
 // Export modules using a unique name to allow it to be added to the dashboard
 export { ImageView } from "./ImageView";
 export { ScatterPlotView } from "./ScatterPlotView";
 export { TableView } from "./Table";
+export { Loader } from "./Loader";

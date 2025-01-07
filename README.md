@@ -3,6 +3,8 @@ A web version of PyMapManager
 
 ## Setup
 
+* `git submodule init`
+* `git submodule update`
 * Install [NodeJs](https://nodejs.org/en)
 * Run `npm install` to install dependencies
 
