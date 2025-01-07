@@ -252,10 +252,9 @@ export const Loader = ({
                 <Nav.Item
                   icon={<FileUploadIcon />}
                   onClick={() => {
-                    setLoading(true);
-                    PyPixelSource.Load()
+                    PyPixelSource.Load(() => setLoading(true))
                       .catch((error) => {
-                        error && alert("Failed to load file");
+                        if (error.message !== "User cancelled") throw error;
                       })
                       .finally(() => setLoading(false));
                   }}

@@ -207,12 +207,12 @@ export class PyPixelSource {
     PyPixelSource.replace(new PyPixelSource(await newPixelSource()));
   }
 
-  static async Load() {
+  static async Load(onLoad: ()=> void = () => {}) {
     let name = "temp.mmap";
 
     let mounted = undefined;
     if (!(window as any).showDirectoryPicker) {
-      name = await loadFolderFallback();
+      name = await loadFolderFallback(onLoad);
     } else {
       let dirHandle;
       try {
@@ -491,6 +491,7 @@ export interface DataTreeNode {
 
 async function clearOldFiles() {
   try {
+    // @ts-ignore
     await py.FS.unmount("/temp.mmap");
   } catch (e) {
     console.error(e);
@@ -502,7 +503,7 @@ async function clearOldFiles() {
   }
 }
 
-async function loadFolderFallback(): Promise<string> {
+async function loadFolderFallback(onLoad: ()=> void = () => {}): Promise<string> {
   const input = document.createElement("input");
   input.type = "file";
   input.multiple = false;
@@ -522,6 +523,7 @@ async function loadFolderFallback(): Promise<string> {
         await clearOldFiles();
 
         insureDirectory("/temp.mmap");
+        onLoad();
         for (const file of target.files) {
           let path = file.webkitRelativePath.slice(rootPath.length + 1);
           path = "/temp.mmap/" + path;
@@ -534,6 +536,11 @@ async function loadFolderFallback(): Promise<string> {
 
         resolve(rootPath);
       }
+    };
+
+    input.oncancel = () => {
+      console.log("cancelled");
+      reject(new Error("User cancelled"));
     };
   });
 
@@ -552,6 +559,7 @@ function insureDirectory(path: string) {
   for (let i = 1; i < dirs.length; i++) {
     const dir = dirs.slice(0, i + 1).join("/");
     try {
+      // @ts-ignore
       py.FS.mkdir(dir);
     } catch (e) {}
   }

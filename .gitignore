@@ -131,3 +131,6 @@ dist
 
 .DS_Store
 __pycache__/
+venv/
+public/py/
+src/wheel_info.json
