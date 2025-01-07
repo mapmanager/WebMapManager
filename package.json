@@ -35,13 +35,12 @@
     "react-scripts": "^5.0.1",
     "react-use": "^17.5.1",
     "rsuite": "^5.71.0",
-    "typescript": "^5",
     "web-vitals": "^4",
     "zip": "^1.2.0"
   },
   "scripts": {
     "start": "concurrently \"npm run watch-python\" \"react-app-rewired start\"",
-    "build": "react-app-rewired build",
+    "build": "GENERATE_SOURCEMAP=false react-app-rewired build",
     "watch-python": "nodemon -V --watch ./MapManagerCore/mapmanagercore --ext py --ignore './MapManagerCore/mapmanagercore/_version.py' --exec 'npm run build-python' ",
     "build-python": "./build_python.sh",
     "test": "react-app-rewired test",
@@ -71,11 +70,12 @@
     "@types/react-color": "^3.0.12",
     "@types/react-grid-layout": "^1.3.5",
     "@types/react-plotly.js": "^2.6.3",
+    "nodemon": "^3.1.9",
     "raw-loader": "^4.0.2",
     "react": "^18.3.1",
     "react-app-rewired": "^2.2.1",
     "sass": "^1.79.4",
-    "nodemon": "^3.1.9"
+    "typescript": "5.1.6"
   },
   "overrides": {
     "@vivjs/viewers": {

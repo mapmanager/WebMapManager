@@ -63,6 +63,7 @@ export const ImageViewer = ({
       delete views[props.id];
       ViewsContext.value = views;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, Object.values(props) as any);
 
   return <div className="ImageView">{children}</div>;

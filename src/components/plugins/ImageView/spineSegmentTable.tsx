@@ -145,6 +145,7 @@ export const SpineTable = ({
         invisible: d.get("invisible"),
       })),
     }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loader, selection, filter, DATA_VERSION.value, editingSegmentSignal]);
 
   const selectedSpineId = SELECTED_SPINE.value;
