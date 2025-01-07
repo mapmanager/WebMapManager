@@ -46,6 +46,7 @@
     "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },
+  "homepage": "/WebMapManager/",
   "eslintConfig": {
     "extends": [
       "react-app",
