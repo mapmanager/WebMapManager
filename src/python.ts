@@ -1,51 +1,17 @@
 import { PyProxy } from "pyodide/ffi";
 import { ZRange } from "./components/plugins/ImageView";
-// @ts-ignore
-import requirements from "./MapManagerCore/requirements.json";
 import { Position } from "./loaders/py_loader";
+import wheelInfo from "./wheel_info.json";
 
 // Load python
 globalThis.py = await window.loadPyodide().then(async (py) => {
   py.setDebug("production" !== process.env.NODE_ENV);
-  if (requirements.micropip.length > 0) {
-    requirements.loadPackage.push("micropip");
-  }
-  await py.loadPackage(requirements.loadPackage);
-  if (requirements.micropip.length > 0) {
-    const micropip = py.pyimport("micropip");
-    await micropip.install(requirements.micropip);
-  }
-
-  // preloads all python files in the py dir to pyodide.
-  const r = (require as any).context(
-    "./MapManagerCore/mapmanagercore",
-    true,
-    /\.py$/
-  );
-  for (const key of r.keys()) {
-    const content = r(key);
-    const path = ("./mapmanagercore" + key.slice(1)) as string;
-    createAllParentDirs(path);
-
-    py.FS.writeFile(path, content, {
-      encoding: "utf8",
-    });
-  }
+  await py.loadPackage("micropip");
+  const micropip = py.pyimport("micropip");
+  const coreUrl = new URL(`/py/${wheelInfo.fileName}`, window.location.href);
+  await micropip.install(coreUrl.href);
 
   return py;
-
-  function createAllParentDirs(path: string) {
-    const dirs = path.split("/");
-    dirs.pop();
-    let current = "";
-    for (const dir of dirs) {
-      current += dir;
-      try {
-        py.FS.mkdir(current);
-      } catch (_) {}
-      current += "/";
-    }
-  }
 });
 
 export interface AnnotationsOptions {

@@ -4,7 +4,6 @@ import type {
   PixelSourceMeta,
   PixelData,
 } from "@vivjs/types/src/index";
-import { Metadata } from "./metadata";
 import type { PixelSource } from "@vivjs/types/src/index";
 import { ZRange } from "../components/plugins/ImageView";
 import { SegmentsAndSpinesResult, pyImageSource } from "../python";
