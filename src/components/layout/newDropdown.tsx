@@ -2,7 +2,7 @@ import { Dropdown } from "rsuite";
 import * as Plugins from "../plugins";
 import * as FlexLayout from "flexlayout-react";
 import { Model } from ".";
-import { WithAsProps } from "rsuite/esm/@types/common";
+import { WithAsProps } from "rsuite/esm/internals/types";
 
 /**
  * Appends a new tab to the layout containing the node
@@ -62,7 +62,7 @@ export const AddNew = ({ node }: Props) => {
             key={pluginName}
             onClick={() => addNew(node, pluginName)}
           >
-            New {(plugin as any).title ?? pluginName}
+            {(plugin as any).title ?? pluginName}
           </Dropdown.Item>
         );
       })}

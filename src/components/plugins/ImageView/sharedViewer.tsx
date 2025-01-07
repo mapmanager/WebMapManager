@@ -10,7 +10,7 @@ import {
 import { useEffect, useMemo } from "react";
 import { ViewSelection } from "../../../loaders/annotations";
 import { signal, useComputed, useSignal } from "@preact/signals-react";
-import { PixelSource } from "../../../loaders";
+import { PyPixelSourceTimePoint } from "../../../loaders/py_loader";
 
 const MAX_ZOOM = 4;
 const MIN_ZOOM = -2;
@@ -37,6 +37,7 @@ interface ImageViewerProps {
   contrastLimits: [number, number][];
   selections: ViewSelection[];
   linked: boolean;
+  loader: PyPixelSourceTimePoint;
   layers: any[];
   target?: [number, number];
 }
@@ -46,6 +47,8 @@ export const ImageViewer = ({
   ...props
 }: ImageViewerProps & { children: any }) => {
   useEffect(() => {
+    if (props.width <= 0 || props.height <= 0) return;
+
     ViewsContext.value = {
       ...ViewsContext.value,
       [props.id]: {
@@ -60,7 +63,7 @@ export const ImageViewer = ({
       delete views[props.id];
       ViewsContext.value = views;
     };
-  }, [...Object.values(props)]);
+  }, Object.values(props) as any);
 
   return <div className="ImageView">{children}</div>;
 };
@@ -72,7 +75,7 @@ const DEFAULT_OVERVIEW = {
   maximumHeight: 150,
   margin: 8,
   scale: 0.2,
-  position: "bottom-left",
+  position: "top-left",
   clickCenter: true,
 };
 
@@ -84,23 +87,17 @@ const getTooltip = ({ object, layer }: any) => {
   return layer.props.getTooltip(object);
 };
 
-export const ImageViewerRoot = ({
-  loader,
-  children,
-}: {
-  loader: PixelSource;
-  children: any[];
-}) => {
+export const ImageViewerRoot = ({ children }: { children: any[] }) => {
   const viewStates = useSignal<any>({});
   const viewsProps = ViewsContext.value;
 
   const [views, layerProps, layers] = useMemo(() => {
-    const loaderArray = [loader];
     const viewsProps_ = Object.values(viewsProps);
 
     const linkedIds = viewsProps_
       .filter(({ linked }) => linked)
       .map(({ id }) => id);
+
     const views = viewsProps_.map(
       ({ id, height, width, x, y, linked }) =>
         new SideBySideViewController({
@@ -117,9 +114,16 @@ export const ImageViewerRoot = ({
     );
 
     const layerProps = viewsProps_.map(
-      ({ id, contrastLimits, colors, channelsVisible, selections }) => ({
+      ({
         id,
-        loader: loaderArray,
+        contrastLimits,
+        colors,
+        channelsVisible,
+        selections,
+        loader,
+      }) => ({
+        id,
+        loader: [loader],
         contrastLimits,
         colors,
         channelsVisible,
@@ -138,7 +142,7 @@ export const ImageViewerRoot = ({
       const overviewView = new OverviewViewWithOffset(
         {
           id,
-          loader: loaderArray,
+          loader: [view.loader],
           detailHeight: view.height,
           detailWidth: view.width,
           ...DEFAULT_OVERVIEW,
@@ -158,12 +162,12 @@ export const ImageViewerRoot = ({
     const viewState = viewStates.peek();
     const newStates = {} as any;
 
-    for (const { id, height, width, minimap, target } of viewsProps_) {
+    for (const { id, height, width, minimap, target, loader } of viewsProps_) {
       const targetPosition = target;
 
       if (!Object.hasOwn(viewState, id)) {
         const defaultViewState = getDefaultInitialViewState(
-          loaderArray,
+          [loader],
           { height, width },
           0.5
         );
@@ -211,7 +215,7 @@ export const ImageViewerRoot = ({
     }
 
     return [views, layerProps, layers];
-  }, [viewsProps, viewStates, loader]);
+  }, [viewsProps, viewStates]);
 
   const viewStatesArr = useComputed(() => [
     ...Object.entries(viewStates.value).map(([id, viewState]: any) => {

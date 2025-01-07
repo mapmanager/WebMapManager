@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { useRasterSources } from "../../utils";
 import * as d3 from "d3";
-import { Color } from ".";
+import { Color, DEFAULT_CONTRAST } from ".";
 import { ViewSelection } from "../../../loaders/annotations";
 import { Signal } from "@preact/signals-react";
 import { VisibilityControl } from "../../Visibility";
@@ -17,7 +16,7 @@ interface Props {
   sources: (pyImageSource | undefined)[];
   colors: Signal<Color[]>;
   contrastLimits: Signal<[number, number][]>;
-  channelsVisible: Signal<[boolean, boolean]>;
+  channelsVisible: Signal<boolean[]>;
 }
 
 export function ContrastControls({
@@ -28,6 +27,7 @@ export function ContrastControls({
   channelsVisible,
 }: Props) {
   let colors_ = colors.value;
+
   return (
     <div className="contrast-controls">
       {selections.map(({ visible, c: channel }) => (
@@ -76,11 +76,13 @@ function ContrastControl({
 
   const [extent, bins] = useMemo(() => {
     if (!source) return [undefined, undefined];
-    return [source.extent() as number[], source.bins()];
+    return [source.extent() as any, source.bins()];
   }, [source]);
 
+  const missing = !extent || extent[0] === extent[1];
+
   useEffect(() => {
-    if (!svgRef.current || !extent) return;
+    if (!svgRef.current || !extent || missing) return;
     const svg = d3.select(svgRef.current);
     const rgbColor = d3.rgb(...color);
 
@@ -129,6 +131,7 @@ function ContrastControl({
           newSelection[1] !== state[channel][1]
         ) {
           const newState = [...state];
+          if (newSelection[1] === 0) newSelection[1] = DEFAULT_CONTRAST[1];
           newState[channel] = newSelection;
           contrastLimits.value = newState;
         }
@@ -144,14 +147,19 @@ function ContrastControl({
       .select(".brush")
       .call(brush as any)
       .call(brush.move as any, currentSelection);
-  }, [svgRef, color, extent, bins, channel, contrastLimits_]);
+  }, [svgRef, color, extent, bins, channel, contrastLimits_, missing]);
+
+  const disabled = !visible || missing;
 
   return (
     <div
-      className={"contrast-control-container" + (visible ? "" : " disabled")}
+      className={
+        "contrast-control-container" +
+        (disabled ? (!visible ? " disabled" : " missing") : "")
+      }
     >
       <ColorPicker
-        color={visible ? color : DISABLED_COLOR}
+        color={disabled ? DISABLED_COLOR : color}
         setColor={setColor}
       />
       <svg className="contrast-control" ref={svgRef}>
@@ -175,7 +183,7 @@ function ContrastControl({
         <g className="brush" />
       </svg>
 
-      <VisibilityControl visible={visible} onChange={toggleVisible} />
+      <VisibilityControl visible={!disabled} onChange={toggleVisible} />
     </div>
   );
 }
