@@ -79,6 +79,7 @@ export const ScatterPlotView = ({
       (a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label)
     );
     return [attributes, names, categorical];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loader, dataVersion]);
 
   const [xAxis, setXAxis] = useQueryState(attributes, "x");
@@ -111,6 +112,7 @@ export const ScatterPlotView = ({
     const value = useMemo(() => {
       if (!attributes) return null;
       return loader.getColumn(attributes.key);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loader, dataVersion, attributes]);
 
     return value;
@@ -125,11 +127,13 @@ export const ScatterPlotView = ({
             ? `rgba(${color.join(",")})`
             : `rgb(${color.join(",")})`
         ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [loader, dataVersion, colorOn]
   );
 
   const symbols = useMemo(
     () => loader.getSymbols(symbolOn?.key),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [loader, dataVersion, symbolOn]
   );
 

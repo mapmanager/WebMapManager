@@ -1,6 +1,8 @@
 # WebMapManager
 A web version of PyMapManager
 
+**Note:** This project is still in development and is not production ready.
+
 ## Setup
 
 * `git submodule init`

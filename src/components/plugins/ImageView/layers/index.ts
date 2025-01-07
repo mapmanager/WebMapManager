@@ -106,7 +106,7 @@ export function useAnnotations(
     };
     window.addEventListener("keydown", onKeyDown, { passive: true });
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [loader, isActive]);
+  }, [loader, isActive, editingSegmentSignal]);
 
   const editMode = editModeSignal.value;
   const layers = useMemo(() => {
@@ -226,6 +226,7 @@ export function useAnnotations(
             }
           : undefined,
         onDragStart: translate
+          // eslint-disable-next-line no-loop-func
           ? (pickingInfo, event) => {
               if (!pickingInfo.coordinate) return;
               destroyOnDrop?.();
@@ -235,6 +236,7 @@ export function useAnnotations(
             }
           : undefined,
         onDrag: translate
+          // eslint-disable-next-line no-loop-func
           ? (pickingInfo, event) => {
               const id = (pickingInfo.sourceLayer?.props.data as any)
                 .properties[pickingInfo.index]?.id;
@@ -252,6 +254,7 @@ export function useAnnotations(
             }
           : undefined,
         onDragEnd: translate
+          // eslint-disable-next-line no-loop-func
           ? (pickingInfo, event) => {
               const id = (pickingInfo.sourceLayer?.props.data as any)
                 .properties[pickingInfo.index]?.id;
@@ -366,6 +369,7 @@ export function useAnnotations(
     layers.unshift(eventLayer);
 
     return layers;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     id,
     loader,
@@ -386,6 +390,7 @@ export function useAnnotations(
     isActive,
     editMode,
     selectionSignal,
+    editModeSignal,
   ]);
 
   return layers as any;

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { batch, Signal } from "@preact/signals-react";
+import { Signal } from "@preact/signals-react";
 import { PyPixelSource } from "../../../loaders/py_loader";
 import { DATA_VERSION } from "../globals";
 import ArrowLeftLineIcon from "@rsuite/icons/ArrowLeftLine";
@@ -17,10 +17,6 @@ interface Props {
   isActive: boolean;
   gridCount: Signal<number>;
   times: number[];
-}
-
-interface SharedEvent {
-  offset: number;
 }
 
 export function TScroll({

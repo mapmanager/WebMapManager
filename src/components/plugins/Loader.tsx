@@ -186,7 +186,8 @@ export const Loader = ({
     selectedSignal.value = undefined;
 
     return [channels, treeData];
-  }, [dataVersion, loader]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataVersion, loader, selectedSignal]);
 
   const selected = selectedSignal.value;
   const onDrop = async (
@@ -240,7 +241,7 @@ export const Loader = ({
     }
 
     setValue(value);
-  }, [selected]);
+  }, [selected, loader]);
 
   return (
     <>

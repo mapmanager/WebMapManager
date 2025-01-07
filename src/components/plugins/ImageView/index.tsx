@@ -32,7 +32,6 @@ import { MdEditRoad } from "react-icons/md";
 import { MdAddRoad } from "react-icons/md";
 import { RiMapPinAddFill } from "react-icons/ri";
 import { RiDragMoveLine } from "react-icons/ri";
-import { IoIosMove } from "react-icons/io";
 import { TScroll } from "./t";
 
 export const DEFAULT_CONTRAST: [number, number] = [0, 2 ** 11];
@@ -275,7 +274,7 @@ function ImageInnerView({
     contrastLimits.value = Array(maxChannels).fill(DEFAULT_CONTRAST);
     globalChannelsVisible.value = Array(maxChannels).fill(true);
     globalContrastLimits.value = Array(maxChannels).fill(DEFAULT_CONTRAST);
-  }, [version]);
+  }, [version, channelsVisible, contrastLimits, loader]);
 
   const zRange = useSignal<ZRange>([35, 36]);
   const visible = visibleSignal.value;
@@ -287,7 +286,7 @@ function ImageInnerView({
       visible,
       time,
     }));
-  }, [zRange.value, time]);
+  }, [zRange.value, time, channelsVisible.value]);
   const { sources, error } = useRasterSources(annotations, selections);
 
   // Snap on new selection if forced

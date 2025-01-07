@@ -147,7 +147,7 @@ function ContrastControl({
       .select(".brush")
       .call(brush as any)
       .call(brush.move as any, currentSelection);
-  }, [svgRef, color, extent, bins, channel, contrastLimits_, missing]);
+  }, [svgRef, color, extent, bins, channel, contrastLimits_, missing, contrastLimits]);
 
   const disabled = !visible || missing;
 
