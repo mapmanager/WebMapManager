@@ -8,8 +8,8 @@ globalThis.py = await window.loadPyodide().then(async (py) => {
   py.setDebug("production" !== process.env.NODE_ENV);
   await py.loadPackage("micropip");
   const micropip = py.pyimport("micropip");
-  const coreUrl = new URL(`/py/${wheelInfo.fileName}`, window.location.href);
-  await micropip.install(coreUrl.href);
+  const coreUrl = `${process.env.PUBLIC_URL}/py/${wheelInfo.fileName}`;
+  await micropip.install(coreUrl);
 
   return py;
 });
