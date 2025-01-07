@@ -3,6 +3,7 @@ import * as Plugins from "../plugins";
 import * as FlexLayout from "flexlayout-react";
 import { Model } from ".";
 import { WithAsProps } from "rsuite/esm/internals/types";
+import AddIcon from "./add.svg";
 
 /**
  * Appends a new tab to the layout containing the node
@@ -41,7 +42,7 @@ const renderButton = (
     <img
       {...props}
       ref={ref}
-      src="/add.svg"
+      src={AddIcon}
       alt="Add"
       key="Add button"
       style={{ width: "1.1em", height: "1.1em" }}
