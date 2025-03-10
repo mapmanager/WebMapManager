@@ -19,8 +19,6 @@ import { Nav } from "rsuite";
 import IconPath from "/icon.png";
 import { Settings } from "./components/Settings";
 import { useEffect } from "react";
-import introJs from "intro.js";
-import { IntroStep } from "intro.js/src/core/steps";
 import { openHelpMenu } from "./help";
 
 const handleKeyDown = (event: KeyboardEvent) => {
