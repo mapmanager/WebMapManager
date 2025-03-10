@@ -23,7 +23,8 @@ export const FILTERS = signal<Set<number> | undefined>(undefined);
  */
 export const DATA_VERSION = signal<number>(0);
 
-export const dataChanged = () => {
+export const dataChanged = (didChange: boolean = true) => {
+  if (!didChange) return;
   DATA_VERSION.value = DATA_VERSION.peek() + 1;
 };
 

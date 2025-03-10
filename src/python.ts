@@ -1,18 +1,72 @@
 import { PyProxy } from "pyodide/ffi";
 import { ZRange } from "./components/plugins/ImageView";
-import { Position } from "./loaders/py_loader";
+import { Position, PyPixelSource } from "./loaders/py_loader";
 import wheelInfo from "./wheel_info.json";
+import { Signal } from "@preact/signals-react";
+
+export const extractPythonError = (e: any) => {
+  console.error(e);
+  if (e instanceof py.ffi.PythonError) {
+    const type = e.type;
+    const message = e.message.split(type).pop()?.slice(2, -1);
+    alert(message);
+  }
+};
+
+export const catchAlertPythonErrors = <T extends any[], U>(
+  fn: (...args: T) => U,
+  returnFalseOnError = false
+) => {
+  return (...args: T): U => {
+    try {
+      return fn(...args);
+    } catch (e) {
+      extractPythonError(e);
+      if (returnFalseOnError) return false as any;
+      throw e;
+    }
+  };
+};
+
+export function wrapCatchProxyErrors<T extends object>(proxy: T): T {
+  return new Proxy(proxy, {
+    get(target, prop, receiver) {
+      const output = Reflect.get(target, prop, receiver);
+      if (typeof output === "function") {
+        return catchAlertPythonErrors(output as any, true);
+      }
+      return output;
+    },
+  });
+}
 
 // Load python
-globalThis.py = await window.loadPyodide().then(async (py) => {
-  py.setDebug("production" !== process.env.NODE_ENV);
-  await py.loadPackage("micropip");
-  const micropip = py.pyimport("micropip");
-  const coreUrl = `${process.env.PUBLIC_URL}/py/${wheelInfo.fileName}`;
-  await micropip.install(coreUrl);
+let newPixelSource: (srcPath?: string) => pyPixelSource;
+export const loadPyodide = async () => {
+  globalThis.py = await window.loadPyodide().then(async (py) => {
+    py.setDebug(import.meta.env.MODE !== "production");
+    await py.loadPackage("micropip");
+    const micropip = py.pyimport("micropip");
+    const coreUrl = new URL(
+      `${import.meta.env.BASE_URL}/py/${wheelInfo.fileName}`,
+      window.location.href
+    ).href;
+    await micropip.install(coreUrl);
 
-  return py;
-});
+    return py;
+  });
+
+  newPixelSource = catchAlertPythonErrors(
+    (await py.runPythonAsync(`
+    from mapmanagercore.pyodide_main import createAnnotations
+    createAnnotations
+    `)) as (srcPath?: string) => pyPixelSource
+  );
+
+  // Autosave
+  window.loaderSignal = new Signal<PyPixelSource>();
+  await PyPixelSource.empty();
+};
 
 export interface AnnotationsOptions {
   filters?: Set<number>;
@@ -30,6 +84,7 @@ export interface AnnotationsOptions {
 
 export type SegmentsAndSpinesResult = {
   get(key: "segmentID"): string;
+  get(key: "color"): [number, number, number];
   get(key: "spines"): {
     get(key: "id"): string;
     get(key: "type"): "Start" | "End" | "";
@@ -41,6 +96,18 @@ export interface pyImageSource {
   data(): { toJs: () => Uint16Array };
   extent(): [number, number];
   bins(nBin?: number): [counts: number, means: number][];
+}
+
+export interface pyImageChannel extends pyImageSource {
+  deleteChannel(): void;
+  loadChannel(): Promise<void>;
+  loadChannelDrop({
+    dataTransfer,
+  }: {
+    dataTransfer: {
+      files: FileList;
+    };
+  }): Promise<void>;
 }
 
 export interface pyQuery {
@@ -67,7 +134,9 @@ export interface pyPixelSourceTimePoint {
   slices_js(channel: number, zRange: [number, number]): Promise<pyImageSource>;
   deleteSpine(spineId: number): void;
   deleteSegment(spineId: number): void;
-
+  setSegmentColor(spineId: number, color: [number, number, number]): void;
+  loadFile(path: string, channel?: number, name?: string): void;
+  
   addSpine(
     segmentId: number,
     x: number,
@@ -83,6 +152,7 @@ export interface pyPixelSourceTimePoint {
   ): number | undefined;
 
   newSegment(): number;
+  deleteChannel(channel: number): boolean;
 
   shape: any;
 
@@ -107,6 +177,9 @@ export interface pyPixelSourceTimePoint {
 }
 
 export interface pyPixelSource {
+  analysisParams_js(): string;
+  setAnalysisParams(key: string, value: any): any;
+
   timePoint_js(timePoint: number): pyPixelSourceTimePoint;
   metadata_json(timePoint: number): string;
 
@@ -138,7 +211,7 @@ export interface pyPixelSource {
     srcTimePoint: number,
     srcChannel: number,
     destTimePoint: number,
-    destChannel: number,
+    destChannel: number
   ): any;
 
   moveTimePoint(
@@ -148,6 +221,7 @@ export interface pyPixelSource {
   ): any;
   createTimePoint(): any;
   dataTree(): any;
+  nextSpine(spineId: number, offset: 1 | -1): number | undefined;
   deleteTimePoint(timePoint: number): any;
   deleteChannel(timePoint: number, channel: number): any;
   updateChannel(
@@ -159,11 +233,7 @@ export interface pyPixelSource {
   maxChannels(): any;
   timePoints_js(): any;
   setMaxChannels(maxChannels: number): any;
+  setMaxChannels(maxChannels: number): any;
 }
-
-const newPixelSource = (await py.runPythonAsync(`
-from mapmanagercore.pyodide_main import createAnnotations
-createAnnotations
-`)) as (srcPath?: string) => Promise<pyPixelSource>;
 
 export { newPixelSource };

@@ -15,6 +15,9 @@ fi
 
 rm -rf ./public/py/* || true
 
+# TODO: Consider Pulling bioio and embed it!
+# TODO: Consider adding another
+
 python -m build --wheel --sdist ./MapManagerCore/ --outdir ./public/py/
 
 WHEEL_FILE=$(basename ./public/py/*.whl)

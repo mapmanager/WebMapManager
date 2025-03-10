@@ -1,13 +1,19 @@
 import { PluginProps } from ".";
-import { Inspector } from "../layout";
 import { Loader, Panel, PanelGroup, SelectPicker, Slider } from "rsuite";
-import Plot from "react-plotly.js";
+import createPlotlyComponent from "react-plotly.js/factory";
+import Plotly from "plotly.js";
 import { useEffect, useMemo, useState } from "react";
 import { Data, PlotMouseEvent, ScatterData } from "plotly.js";
 import { DATA_VERSION, FILTERS, SELECTED_SPINE, setFilters } from "./globals";
 import { VisibilityControl } from "../Visibility";
 import { extent, scaleLinear } from "d3";
 import { ColumnAttributes } from "../../python";
+import { NavBar } from "../layout";
+import { InspectorNavBar, NavInspectorItem } from "../../nav";
+import { useSignal } from "@preact/signals-react";
+import InfoOutlineIcon from "@rsuite/icons/InfoOutline";
+
+const Plot = createPlotlyComponent(Plotly);
 
 const styles = {
   width: "100%",
@@ -52,6 +58,7 @@ export const ScatterPlotView = ({
   width,
   height,
   visible,
+  isActive,
 }: PluginProps) => {
   const dataVersion = DATA_VERSION.value;
   const [attributes, names, categorical] = useMemo(() => {
@@ -236,99 +243,117 @@ export const ScatterPlotView = ({
     };
   }
 
+  const activeKey = useSignal<undefined | string>(undefined);
+
   return (
     <>
-      <Inspector>
-        {() => (
-          <PanelGroup>
-            <Panel header="Filters" defaultExpanded>
-              <SelectPicker
-                label="Segments"
-                cleanable={true}
-                value={segment}
-                style={styles}
-                data={segmentsNames}
-                onChange={setSegment as any}
-              />
-            </Panel>
-            <Panel header="Axis" defaultExpanded>
-              <SelectPicker
-                label="x"
-                groupBy="group"
-                cleanable={false}
-                value={xAxis.key}
-                style={styles}
-                data={names}
-                onChange={setXAxis as any}
-              />
-              <SelectPicker
-                label="y"
-                groupBy="group"
-                cleanable={false}
-                value={yAxis.key}
-                style={styles}
-                data={names}
-                onChange={setYAxis as any}
-              />
-              <SelectPicker
-                label="z"
-                groupBy="group"
-                cleanable={true}
-                value={zAxis?.key}
-                style={styles}
-                data={names}
-                onChange={setZAxis as any}
-              />
-            </Panel>
-            <Panel header="Markers" defaultExpanded>
-              <SelectPicker
-                label="Size"
-                groupBy="group"
-                cleanable={true}
-                value={scaleOn?.key}
-                style={styles}
-                data={names}
-                onChange={setScaleOn as any}
-              />
-              <SelectPicker
-                label="Color"
-                groupBy="group"
-                cleanable={true}
-                value={colorOn?.key}
-                style={styles}
-                data={categorical}
-                onChange={setColorOn as any}
-              />
-              <SelectPicker
-                label="Symbol"
-                groupBy="group"
-                cleanable={true}
-                value={symbolOn?.key}
-                style={styles}
-                data={categorical}
-                onChange={setSymbolOn as any}
-              />
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <label>Scale</label>
-                <div style={{ paddingLeft: 15, flexGrow: 1 }}>
-                  <Slider
-                    defaultValue={7}
-                    min={6}
-                    step={1}
-                    max={20}
-                    value={scale}
-                    onChange={setScale}
-                  />
-                </div>
-              </div>
-              <br />
-              <VisibilityControl visible={showLabels} onChange={setShowLabels}>
-                Show Annotation Labels
-              </VisibilityControl>
-            </Panel>
-          </PanelGroup>
-        )}
-      </Inspector>
+      {isActive && (
+        <>
+          <NavBar>
+            <div className="flex-grow" />
+            <InspectorNavBar activeKey={activeKey}>
+              <NavInspectorItem
+                eventKey={"inspector"}
+                icon={<InfoOutlineIcon />}
+                Inspector={() => (
+                  <PanelGroup>
+                    <Panel header="Filters" defaultExpanded>
+                      <SelectPicker
+                        label="Segments"
+                        cleanable={true}
+                        value={segment}
+                        style={styles}
+                        data={segmentsNames}
+                        onChange={setSegment as any}
+                      />
+                    </Panel>
+                    <Panel header="Axis" defaultExpanded>
+                      <SelectPicker
+                        label="x"
+                        groupBy="group"
+                        cleanable={false}
+                        value={xAxis.key}
+                        style={styles}
+                        data={names}
+                        onChange={setXAxis as any}
+                      />
+                      <SelectPicker
+                        label="y"
+                        groupBy="group"
+                        cleanable={false}
+                        value={yAxis.key}
+                        style={styles}
+                        data={names}
+                        onChange={setYAxis as any}
+                      />
+                      <SelectPicker
+                        label="z"
+                        groupBy="group"
+                        cleanable={true}
+                        value={zAxis?.key}
+                        style={styles}
+                        data={names}
+                        onChange={setZAxis as any}
+                      />
+                    </Panel>
+                    <Panel header="Markers" defaultExpanded>
+                      <SelectPicker
+                        label="Size"
+                        groupBy="group"
+                        cleanable={true}
+                        value={scaleOn?.key}
+                        style={styles}
+                        data={names}
+                        onChange={setScaleOn as any}
+                      />
+                      <SelectPicker
+                        label="Color"
+                        groupBy="group"
+                        cleanable={true}
+                        value={colorOn?.key}
+                        style={styles}
+                        data={categorical}
+                        onChange={setColorOn as any}
+                      />
+                      <SelectPicker
+                        label="Symbol"
+                        groupBy="group"
+                        cleanable={true}
+                        value={symbolOn?.key}
+                        style={styles}
+                        data={categorical}
+                        onChange={setSymbolOn as any}
+                      />
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <label>Scale</label>
+                        <div style={{ paddingLeft: 15, flexGrow: 1 }}>
+                          <Slider
+                            defaultValue={7}
+                            min={6}
+                            step={1}
+                            max={20}
+                            value={scale}
+                            onChange={setScale}
+                          />
+                        </div>
+                      </div>
+                      <br />
+                      <VisibilityControl
+                        visible={showLabels}
+                        onChange={setShowLabels}
+                      >
+                        Show Annotation Labels
+                      </VisibilityControl>
+                    </Panel>
+                  </PanelGroup>
+                )}
+              >
+                Inspector
+              </NavInspectorItem>
+            </InspectorNavBar>
+          </NavBar>
+        </>
+      )}
 
       <Plot
         onSelected={addPointsToFilter}
@@ -346,3 +371,4 @@ export const ScatterPlotView = ({
 };
 
 ScatterPlotView.title = "Scatter Plot";
+ScatterPlotView.description = "A scatter plot viewer for analysis data."; 

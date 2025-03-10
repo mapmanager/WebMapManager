@@ -1,11 +1,16 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { Color, DEFAULT_CONTRAST } from ".";
+import { Color, DEFAULT_CONTRAST, handleDragOver } from ".";
 import { ViewSelection } from "../../../loaders/annotations";
 import { Signal } from "@preact/signals-react";
 import { VisibilityControl } from "../../Visibility";
 import { ColorPicker } from "./colorPicker";
-import { pyImageSource } from "../../../python";
+import { pyImageChannel } from "../../../python";
+import { Dropdown, Loader } from "rsuite";
+import TrashIcon from "@rsuite/icons/Trash";
+import FileUploadIcon from "@rsuite/icons/FileUpload";
+import MoreIcon from "@rsuite/icons/More";
+import { set } from "lodash";
 
 const HANDLE_SIZE = 6;
 const TOP_PADDING = 3;
@@ -13,7 +18,7 @@ const DISABLED_COLOR = [0, 0, 0] as Color;
 
 interface Props {
   selections: ViewSelection[];
-  sources: (pyImageSource | undefined)[];
+  sources: (pyImageChannel | undefined)[];
   colors: Signal<Color[]>;
   contrastLimits: Signal<[number, number][]>;
   channelsVisible: Signal<boolean[]>;
@@ -27,7 +32,6 @@ export function ContrastControls({
   channelsVisible,
 }: Props) {
   let colors_ = colors.value;
-
   return (
     <div className="contrast-controls">
       {selections.map(({ visible, c: channel }) => (
@@ -63,7 +67,7 @@ function ContrastControl({
   visible,
   toggleVisible,
 }: {
-  source?: pyImageSource;
+  source?: pyImageChannel;
   color: Color;
   setColor: (color: Color) => void;
   channel: number;
@@ -73,6 +77,7 @@ function ContrastControl({
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const contrastLimits_ = contrastLimits.value[channel];
+  const [loading, setLoading] = useState(false);
 
   const [extent, bins] = useMemo(() => {
     if (!source) return [undefined, undefined];
@@ -80,6 +85,7 @@ function ContrastControl({
   }, [source]);
 
   const missing = !extent || extent[0] === extent[1];
+  if (missing || !source) return;
 
   useEffect(() => {
     if (!svgRef.current || !extent || missing) return;
@@ -147,7 +153,16 @@ function ContrastControl({
       .select(".brush")
       .call(brush as any)
       .call(brush.move as any, currentSelection);
-  }, [svgRef, color, extent, bins, channel, contrastLimits_, missing, contrastLimits]);
+  }, [
+    svgRef,
+    color,
+    extent,
+    bins,
+    channel,
+    contrastLimits_,
+    missing,
+    contrastLimits,
+  ]);
 
   const disabled = !visible || missing;
 
@@ -157,6 +172,14 @@ function ContrastControl({
         "contrast-control-container" +
         (disabled ? (!visible ? " disabled" : " missing") : "")
       }
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.files.length === 0) return;
+        setLoading(true);
+        source!.loadChannelDrop(e).finally(() => setLoading(false));
+      }}
+      onDragOver={handleDragOver}
     >
       <ColorPicker
         color={disabled ? DISABLED_COLOR : color}
@@ -183,7 +206,39 @@ function ContrastControl({
         <g className="brush" />
       </svg>
 
-      <VisibilityControl visible={!disabled} onChange={toggleVisible} />
+      <div className="flex flex-col items-center gap-2 h-[50px] justify-between">
+        <VisibilityControl visible={!disabled} onChange={toggleVisible} />
+        <Dropdown
+          size="sm"
+          placement="bottomEnd"
+          noCaret
+          disabled={loading}
+          renderToggle={(props, ref) =>
+            loading ? (
+              <Loader className="mr-[-3px]" />
+            ) : (
+              <MoreIcon {...props} ref={ref} className="cursor-pointer" />
+            )
+          }
+        >
+          <Dropdown.Item
+            icon={<FileUploadIcon />}
+            onClick={() => {
+              setLoading(true);
+              source!.loadChannel().finally(() => setLoading(false));
+            }}
+          >
+            Replace
+          </Dropdown.Item>
+          <Dropdown.Item
+            icon={<TrashIcon />}
+            onClick={() => source?.deleteChannel()}
+            color="red"
+          >
+            Delete
+          </Dropdown.Item>
+        </Dropdown>
+      </div>
     </div>
   );
 }

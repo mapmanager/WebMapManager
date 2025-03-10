@@ -9,13 +9,12 @@ import {
   useContext,
   useEffect,
 } from "react";
-import { createPortal } from "react-dom";
 import { ImageViewerRoot } from "../plugins/ImageView/sharedViewer";
 import { AddNew } from "./newDropdown";
 import { signal } from "@preact/signals-react";
 import { MainNavBar, NavBarElements } from "../../nav";
-
-const inspectorDiv = document.getElementById("inspector") as HTMLElement;
+import { PyPixelSource } from "../../loaders/py_loader";
+import { Placeholder } from "./placeholder";
 
 // Allows the inspector to know which inspector to render.
 const ActiveInspectorContext = createContext<boolean>(false);
@@ -26,25 +25,17 @@ const InitialStateJson: FlexLayout.IJsonModel = {
   layout: {
     type: "row",
     weight: 100,
-    children: [
-      {
-        type: "tabset",
-        weight: 50,
-        selected: 0,
-        active: true,
-        children: [
-          {
-            type: "tab",
-            component: "Loader",
-            name: "Loader",
-          },
-        ],
-      },
-    ],
+    children: [],
   },
 };
 
 export const Model = FlexLayout.Model.fromJson(InitialStateJson);
+export const activeTabElement = () => {
+  const activeTabSet = Model.getActiveTabset();
+  const path = activeTabSet?.getSelectedNode()?.getPath();
+  if (!path) return;
+  return document.querySelector(`.flexlayout__tab[data-layout-path="${path}"]`);
+}
 
 /**
  * Checks if a point is in a node
@@ -91,6 +82,7 @@ const onRenderTabSet = (
 const activeTabSetId = signal(
   Model.getActiveTabset()?.getSelectedNode()?.getId()
 );
+
 const onModelChange = (model: FlexLayout.Model) => {
   const oldActiveTabSetId = activeTabSetId.peek();
   const newActiveTabSetId = model.getActiveTabset()?.getSelectedNode()?.getId();
@@ -104,9 +96,11 @@ export default function Layout<Props>(props: Props) {
     [props]
   );
 
+  const loader = (props as any).loader as PyPixelSource;
+
   return (
     <div id="root-application">
-      <MainNavBar loader={(props as any).loader} />
+      <MainNavBar loader={loader} />
       <div id="layout-grid-container" onMouseDown={onMouseDown}>
         <ImageViewerRoot {...(props as any)}>
           <FlexLayout.Layout
@@ -115,7 +109,7 @@ export default function Layout<Props>(props: Props) {
             onModelChange={onModelChange}
             onRenderTabSet={onRenderTabSet}
             onRenderTab={onRenderTab}
-            onTabSetPlaceHolder={onTabSetPlaceHolder}
+            onTabSetPlaceHolder={(node) => <Placeholder node={node}/>}
           />
         </ImageViewerRoot>
       </div>
@@ -129,13 +123,9 @@ function onRenderTab(
 ) {
   if (renderValues.content !== "[Unnamed Tab]") return;
   const component = node.getComponent();
-  const title = (Plugins as any)[component!]["title"] ?? component;
+  const title = (Plugins as any)[component!]["shortTitle"] ?? (Plugins as any)[component!]["title"] ?? component;
   renderValues.content = title;
 }
-
-const onTabSetPlaceHolder = (node: FlexLayout.TabSetNode) => (
-  <div className="placeholder" />
-);
 
 /**
  * A container for the tab component.
@@ -190,27 +180,13 @@ const Container = (props: any) => {
 };
 
 /**
- * Inspector for components. All the children of the inspector component are
- * attached to the global inspector when the view is active.
- */
-export const Inspector = ({
-  children,
-}: {
-  children: () => ReactElement<{}, any>;
-}) => {
-  const active = useContext(ActiveInspectorContext);
-  if (active) return createPortal(children(), inspectorDiv);
-  return <></>;
-};
-
-/**
  * Nev bar for components. All the children of the nave bar component are
  * attached to the global nave bar when the view is active.
  */
 export const NavBar = ({
   children: Children,
 }: {
-  children: undefined | (() => ReactElement<{}, any>);
+  children: undefined | ReactElement<{}, any> | any;
 }) => {
   const active = useContext(ActiveInspectorContext);
   useEffect(() => {

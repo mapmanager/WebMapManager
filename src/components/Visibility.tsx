@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-import "./Visibility.scss";
 
 interface Props {
   visible: boolean;

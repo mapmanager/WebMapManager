@@ -1,6 +1,6 @@
 import type { Feature, Geometry, GeoJsonProperties } from "geojson";
-import { GeoJsonLayer, PolygonLayer } from "@deck.gl/layers/typed";
-import { PathStyleExtension } from "@deck.gl/extensions/typed";
+import { GeoJsonLayer, PolygonLayer } from "@deck.gl/layers";
+import { PathStyleExtension } from "@deck.gl/extensions";
 import {
   BinaryFeatureCollection,
   BinaryLineFeature,
@@ -16,7 +16,7 @@ import {
   dataChanged,
 } from "../../globals";
 import { AnnotationsOptions } from "../../../../python";
-import { PickingInfo } from "@deck.gl/core/typed";
+import { PickingInfo } from "@deck.gl/core";
 import { Signal } from "@preact/signals-react";
 import { PyPixelSourceTimePoint } from "../../../../loaders/py_loader";
 import { PyProxy, TypedArray } from "pyodide/ffi";
@@ -150,7 +150,7 @@ export function useAnnotations(
       const data = decodeDatasetFromProxy(layerProxy);
       // console.timeEnd("parseAnnotation");
       const interactions = INTERACTIONS.map((key) => properties.get(key));
-      const offset = properties.get("offset");
+      const offset = getFeature(properties, "offset");
       const outline = properties.get("outline");
       const fixed = properties.get("fixed");
       const isLabel = properties.get("label") === true;
@@ -167,6 +167,7 @@ export function useAnnotations(
         hover !== undefined ||
         onHoverOut !== undefined;
 
+      const getStrokeWidth = getFeature(properties, "strokeWidth");
       const layer = new GeoJsonLayer({
         id: `-#${id}#-annotations-${layerId}`,
         data,
@@ -189,7 +190,7 @@ export function useAnnotations(
             ]?.id;
             let [x, y] = pickingInfo.coordinate!;
             const z = Math.trunc((zRange[1] + zRange[0]) / 2);
-            if (click(id, x, y, z)) dataChanged();
+            dataChanged(click(id, x, y, z));
             return;
           }
 
@@ -215,19 +216,19 @@ export function useAnnotations(
         onHover: hover
           ? (pickingInfo: PickingInfo) => {
               if (!pickingInfo.picked) {
-                if (onHoverOut && onHoverOut()) dataChanged();
+                dataChanged(onHoverOut && onHoverOut());
                 return;
               }
               const id = (pickingInfo.sourceLayer?.props.data as any)
                 .properties[pickingInfo.index]?.id;
               let [x, y] = pickingInfo.coordinate!;
               const z = Math.trunc((zRange[1] + zRange[0]) / 2);
-              if (hover(id, x, y, z)) dataChanged();
+              dataChanged(hover(id, x, y, z));
             }
           : undefined,
         onDragStart: translate
-          // eslint-disable-next-line no-loop-func
-          ? (pickingInfo, event) => {
+          ? // eslint-disable-next-line no-loop-func
+            (pickingInfo, event) => {
               if (!pickingInfo.coordinate) return;
               destroyOnDrop?.();
               dragging = layerId;
@@ -236,8 +237,8 @@ export function useAnnotations(
             }
           : undefined,
         onDrag: translate
-          // eslint-disable-next-line no-loop-func
-          ? (pickingInfo, event) => {
+          ? // eslint-disable-next-line no-loop-func
+            (pickingInfo, event) => {
               const id = (pickingInfo.sourceLayer?.props.data as any)
                 .properties[pickingInfo.index]?.id;
               if (dragging !== layerId || !pickingInfo.coordinate || !id)
@@ -247,22 +248,22 @@ export function useAnnotations(
               watchForZChanges(selectionSignal, (z) =>
                 translate(id, x, y, z, state)
               );
-              if (translate(id, x, y, z, state)) dataChanged();
+              dataChanged(translate(id, x, y, z, state));
 
               state = State.dragging;
               event.stopImmediatePropagation();
             }
           : undefined,
         onDragEnd: translate
-          // eslint-disable-next-line no-loop-func
-          ? (pickingInfo, event) => {
+          ? // eslint-disable-next-line no-loop-func
+            (pickingInfo, event) => {
               const id = (pickingInfo.sourceLayer?.props.data as any)
                 .properties[pickingInfo.index]?.id;
               if (dragging !== layerId || !id) return;
               let [x, y] = pickingInfo.coordinate! ?? [0, 0];
               const z = Math.trunc((zRange[1] + zRange[0]) / 2);
               state = State.end;
-              if (translate(id, x, y, z, state)) dataChanged();
+              dataChanged(translate(id, x, y, z, state));
               event.stopImmediatePropagation();
               dragging = undefined;
               destroyOnDrop?.();
@@ -270,7 +271,7 @@ export function useAnnotations(
           : undefined,
         getFillColor: getFeature(properties, "fill", true) || [0, 0, 0, 0],
         getLineColor: getFeature(properties, "stroke", true) || [0, 0, 0, 0],
-        getLineWidth: getFeature(properties, "strokeWidth") || 1,
+        getLineWidth: getStrokeWidth || 1,
         getPointRadius: getFeature(properties, "radius") || 1,
         lineCapRounded: false,
         lineJointRounded: false,
@@ -285,11 +286,15 @@ export function useAnnotations(
         textSizeMaxPixels,
         jointRounded: true,
         textSizeMinPixels,
-        getOffset:
-          offset instanceof py.ffi.PyCallable
-            ? (x: Feature<Geometry, GeoJsonProperties>) =>
-                offset(x.properties?.id)
-            : offset,
+        getOffset: offset
+          ? (x: Feature<Geometry, GeoJsonProperties>) =>
+              (typeof offset == "function" ? offset(x) : offset) /
+              (getStrokeWidth
+                ? typeof getStrokeWidth == "function"
+                  ? getStrokeWidth(x)
+                  : getStrokeWidth
+                : 1)
+          : undefined,
         // getDashArray: hasOffset ? [6, 6] : undefined,
         getOutlineWidth:
           outline instanceof py.ffi.PyCallable
@@ -345,7 +350,7 @@ export function useAnnotations(
 
         const [x, y] = pickingInfo.coordinate!;
         const z = Math.trunc((zRange[1] + zRange[0]) / 2);
-        
+
         const mode = editModeSignal.peek();
 
         // if (mode === SegmentEditMode.SetOrigin) {
@@ -369,7 +374,7 @@ export function useAnnotations(
     layers.unshift(eventLayer);
 
     return layers;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     id,
     loader,
