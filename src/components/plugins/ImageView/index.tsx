@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ContrastControls } from "./contrast";
-import "./index.scss";
 import { ZScroll } from "./z";
-import { PanelGroup, Panel, Nav, IconButton } from "rsuite";
-import { Inspector, NavBar } from "../../layout";
+import { PanelGroup, Panel, Nav, IconButton, Heading } from "rsuite";
+import { NavBar } from "../../layout";
 import { DATA_VERSION, SELECTED_SEGMENT, SELECTED_SPINE } from "../globals";
-import { ImageViewer } from "./sharedViewer";
+import { ImageViewer, setImageViewPort } from "./sharedViewer";
 import { PluginProps } from "..";
+import PlusIcon from "@rsuite/icons/Plus";
 import {
   signal,
   Signal,
@@ -26,13 +26,16 @@ import { VisibilityControl } from "../../Visibility";
 import { SpineTable } from "./spineSegmentTable";
 import { COLORS_SELECTOR_OPTIONS } from "./colorPicker";
 import { color as D3Color } from "d3";
-import { IoUnlinkSharp, IoLinkSharp } from "react-icons/io5";
+import { IoUnlinkSharp, IoLinkSharp, IoHome } from "react-icons/io5";
 import { TbVectorBezier2 } from "react-icons/tb";
 import { MdEditRoad } from "react-icons/md";
 import { MdAddRoad } from "react-icons/md";
 import { RiMapPinAddFill } from "react-icons/ri";
 import { RiDragMoveLine } from "react-icons/ri";
 import { TScroll } from "./t";
+import { InspectorNavBar, NavInspectorItem } from "../../../nav";
+import InfoOutlineIcon from "@rsuite/icons/InfoOutline";
+import TreeIcon from "@rsuite/icons/Tree";
 
 export const DEFAULT_CONTRAST: [number, number] = [0, 2 ** 11];
 const DEFAULT_COLOR: Color[] = COLORS_SELECTOR_OPTIONS.map((color) => {
@@ -207,6 +210,13 @@ interface ImageInnerViewProps extends PluginProps {
   time: number;
 }
 
+export const handleDragOver = (
+  event: React.DragEvent<HTMLDivElement>
+): void => {
+  event.preventDefault();
+  event.stopPropagation();
+};
+
 function ImageInnerView({
   loader,
   width,
@@ -227,11 +237,11 @@ function ImageInnerView({
 }: ImageInnerViewProps) {
   const annotations = useMemo(() => loader.getTimePoint(time), [time, loader]);
   const linked = useSignal(true);
-  const target = useSignal<[number, number] | undefined>(undefined);
   const colors = useLinkedSignal<Color[]>(DEFAULT_COLOR, globalColor, linked);
   const activeKey = useSignal(undefined);
   const editingSegmentSignal = useSignal<number | undefined>(undefined);
   const segmentEditMode = useSignal<SegmentEditMode>(SegmentEditMode.MoveSpine);
+  const [loading, setLoading] = useState(false);
 
   const version = DATA_VERSION.value;
 
@@ -289,6 +299,40 @@ function ImageInnerView({
   }, [zRange.value, time, channelsVisible.value]);
   const { sources, error } = useRasterSources(annotations, selections);
 
+  useEffect(() => {
+    if (!isActive) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        setImageViewPort(id, 0.95);
+        return;
+      }
+
+      let offset: -1 | 1;
+      if (event.key === "ArrowRight") {
+        offset = 1;
+      } else if (event.key === "ArrowLeft") {
+        offset = -1;
+      } else {
+        return;
+      }
+
+      event.preventDefault();
+
+      const selectedSpine = SELECTED_SPINE.peek();
+      if (selectedSpine == undefined) return;
+      const nextId = loader.nextSpine(selectedSpine, offset);
+      if (nextId !== undefined) {
+        SELECTED_SPINE.value = nextId;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [id, isActive, loader]);
+
   // Snap on new selection if forced
   useEffect(() => {
     if (!linked.value && !isActive) return;
@@ -301,16 +345,15 @@ function ImageInnerView({
       if (!spine) return;
 
       const [x, y, newZ] = spine;
+      const distance = Math.floor((high - low) / 2);
+      low = Math.max(0, newZ - distance);
+      high = Math.min(annotations.z, newZ + distance);
       batch(() => {
-        target.value = [x, y];
-
-        const distance = Math.floor((high - low) / 2);
-        low = Math.max(0, newZ - distance);
-        high = Math.min(annotations.z, newZ + distance);
-        zRange.value = [low, high];
+        zRange.value = [low, high + 1];
+        setImageViewPort(id, 10, [x, y]);
       });
     });
-  }, [annotations, zRange, isActive, linked.value, target]);
+  }, [annotations, zRange, isActive, linked.value, id]);
 
   const editingSegment = editingSegmentSignal.value;
 
@@ -360,6 +403,7 @@ function ImageInnerView({
     segmentEditMode.value =
       segmentEditMode.peek() === mode ? SegmentEditMode.MoveSpine : mode;
   }
+  const inspectorActiveKey = useSignal<undefined | string>(undefined);
 
   // if (!visible) return <></>;
   if (error) return <h1>{error.message}</h1>;
@@ -367,170 +411,246 @@ function ImageInnerView({
   return (
     <>
       {isActive && (
-        <NavBar>
-          {() => (
-            <>
-              <Nav
-                activeKey={activeKey.value}
-                onSelect={(v) => (activeKey.value = v)}
-                className="flex-grow"
+        <>
+          <NavBar>
+            <Nav
+              activeKey={activeKey.value}
+              onSelect={(v) => (activeKey.value = v)}
+              className="flex-grow"
+            >
+              <Nav.Item
+                eventKey="move_segment_spines"
+                disabled={SELECTED_SEGMENT.value === undefined}
+                active={
+                  editingSegment !== undefined &&
+                  segmentEditMode.value === SegmentEditMode.MoveSpine
+                }
+                icon={<TbVectorBezier2 />}
+                onClick={() => {
+                  setSegmentEditMode(SegmentEditMode.MoveSpine);
+                }}
               >
-                <Nav.Item
-                  eventKey="move_segment_spines"
-                  disabled={SELECTED_SEGMENT.value === undefined}
-                  active={
-                    editingSegment !== undefined &&
-                    segmentEditMode.value === SegmentEditMode.MoveSpine
-                  }
-                  icon={<TbVectorBezier2 />}
-                  onClick={() => {
-                    setSegmentEditMode(SegmentEditMode.MoveSpine);
-                  }}
-                >
-                  Move Spines
-                </Nav.Item>
-                <Nav.Item
-                  eventKey="add_segment_spines"
-                  disabled={SELECTED_SEGMENT.value === undefined}
-                  active={
-                    editingSegment !== undefined &&
-                    segmentEditMode.value === SegmentEditMode.AddSpine
-                  }
-                  icon={<RiMapPinAddFill />}
-                  onClick={() => {
-                    setSegmentEditMode(SegmentEditMode.AddSpine);
-                  }}
-                >
-                  Add Spines
-                </Nav.Item>
-                <Nav.Item
-                  eventKey="set_segment_origin"
-                  disabled={SELECTED_SEGMENT.value === undefined}
-                  active={
-                    editingSegment !== undefined &&
-                    segmentEditMode.value === SegmentEditMode.SetOrigin
-                  }
-                  icon={<RiDragMoveLine />}
-                  onClick={() => {
-                    setSegmentEditMode(SegmentEditMode.SetOrigin);
-                  }}
-                >
-                  Set Segment Origin
-                </Nav.Item>
-                <Nav.Item divider />
-                <Nav.Item
-                  eventKey="new_segment_path"
-                  icon={<MdAddRoad />}
-                  disabled={annotations!.shape[0] === 0}
-                  active={false}
-                  onClick={() => {
-                    const id = Number(annotations.newSegment());
-                    editingSegmentSignal.value = id;
-                    segmentEditMode.value = SegmentEditMode.Path;
-                    SELECTED_SEGMENT.value = id;
-                  }}
-                >
-                  New Segment Path
-                </Nav.Item>
-                <Nav.Item
-                  eventKey="edit_segment_path"
-                  disabled={SELECTED_SEGMENT.value === undefined}
-                  active={
-                    editingSegment !== undefined &&
-                    segmentEditMode.value === SegmentEditMode.Path
-                  }
-                  icon={<MdEditRoad />}
-                  onClick={() => {
-                    setSegmentEditMode(SegmentEditMode.Path);
-                  }}
-                >
-                  Edit Segment Path
-                </Nav.Item>
-              </Nav>
-            </>
-          )}
-        </NavBar>
+                Move Spines
+              </Nav.Item>
+              <Nav.Item
+                eventKey="add_segment_spines"
+                disabled={SELECTED_SEGMENT.value === undefined}
+                active={
+                  editingSegment !== undefined &&
+                  segmentEditMode.value === SegmentEditMode.AddSpine
+                }
+                icon={<RiMapPinAddFill />}
+                onClick={() => {
+                  setSegmentEditMode(SegmentEditMode.AddSpine);
+                }}
+              >
+                Add Spines
+              </Nav.Item>
+              <Nav.Item
+                eventKey="set_segment_origin"
+                disabled={SELECTED_SEGMENT.value === undefined}
+                active={
+                  editingSegment !== undefined &&
+                  segmentEditMode.value === SegmentEditMode.SetOrigin
+                }
+                icon={<RiDragMoveLine />}
+                onClick={() => {
+                  setSegmentEditMode(SegmentEditMode.SetOrigin);
+                }}
+              >
+                Set Segment Origin
+              </Nav.Item>
+              <Nav.Item divider />
+              <Nav.Item
+                eventKey="new_segment_path"
+                icon={<MdAddRoad />}
+                disabled={annotations!.shape[0] === 0}
+                active={false}
+                onClick={() => {
+                  const id = Number(annotations.newSegment());
+                  editingSegmentSignal.value = id;
+                  segmentEditMode.value = SegmentEditMode.Path;
+                  SELECTED_SEGMENT.value = id;
+                }}
+              >
+                New Segment Path
+              </Nav.Item>
+              <Nav.Item
+                eventKey="edit_segment_path"
+                disabled={SELECTED_SEGMENT.value === undefined}
+                active={
+                  editingSegment !== undefined &&
+                  segmentEditMode.value === SegmentEditMode.Path
+                }
+                icon={<MdEditRoad />}
+                onClick={() => {
+                  setSegmentEditMode(SegmentEditMode.Path);
+                }}
+              >
+                Edit Segment Path
+              </Nav.Item>
+            </Nav>
+            <InspectorNavBar activeKey={inspectorActiveKey}>
+              <NavInspectorItem
+                eventKey={"segment-table"}
+                icon={<TreeIcon />}
+                Inspector={() => (
+                  <PanelGroup className="image-inspector-controls">
+                    <Panel defaultExpanded className="spine-table">
+                      <SpineTable
+                        expandedRows={segmentsExpandedRows}
+                        loader={annotations}
+                        selection={zRange.value}
+                        editingSegmentSignal={editingSegmentSignal}
+                        editMode={segmentEditMode}
+                      />
+                    </Panel>
+                  </PanelGroup>
+                )}
+              >
+                Segment Table
+              </NavInspectorItem>
+              <NavInspectorItem
+                eventKey={"inspector"}
+                icon={<InfoOutlineIcon />}
+                Inspector={() => {
+                  const [loading, setLoading] = useState(false);
+                  return (
+                    <div className="flex flex-col h-full justify-between p-4 gap-8">
+                      <div
+                        className="flex-grow"
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (e.dataTransfer.files.length === 0) return;
+
+                          setLoading(true);
+                          annotations
+                            .loadChannelDrop(e)
+                            .finally(() => setLoading(false));
+                        }}
+                        onDragOver={handleDragOver}
+                      >
+                        <div className="flex justify-between gap-2 pb-2">
+                          <Heading className="pb-2" level={6}>
+                            Channels
+                          </Heading>
+                          <IconButton
+                            className="h-[24px]"
+                            loading={loading}
+                            icon={<PlusIcon />}
+                            onClick={async () => {
+                              setLoading(true);
+                              annotations
+                                .loadChannel()
+                                .finally(() => setLoading(false));
+                            }}
+                            size="xs"
+                          >
+                            Import Channel
+                          </IconButton>
+                        </div>
+                        <ContrastControls
+                          sources={sources!}
+                          selections={selections}
+                          colors={colors}
+                          contrastLimits={contrastLimits}
+                          channelsVisible={channelsVisible}
+                        />
+                      </div>
+                      <div>
+                        <Heading className="pb-2" level={6}>
+                          Overlay Visibility
+                        </Heading>
+                        <VisibilityControl
+                          visible={showLineSegments.value}
+                          onChange={(visible) =>
+                            (showLineSegments.value = visible)
+                          }
+                        >
+                          Line Segments
+                        </VisibilityControl>
+                        <VisibilityControl
+                          visible={showLineSegmentsRadius.value}
+                          onChange={(visible) =>
+                            (showLineSegmentsRadius.value = visible)
+                          }
+                        >
+                          Line Segments Bounds
+                        </VisibilityControl>
+                        <VisibilityControl
+                          visible={showLineSegmentsOrigin.value}
+                          onChange={(visible) =>
+                            (showLineSegmentsOrigin.value = visible)
+                          }
+                        >
+                          Line Segments Origin
+                        </VisibilityControl>
+                        <VisibilityControl
+                          visible={showSpines.value}
+                          onChange={(visible) => (showSpines.value = visible)}
+                        >
+                          Spines
+                        </VisibilityControl>
+                        <VisibilityControl
+                          visible={showAnchors.value}
+                          onChange={(visible) => (showAnchors.value = visible)}
+                        >
+                          Anchors
+                        </VisibilityControl>
+                        <VisibilityControl
+                          visible={showLabels.value}
+                          onChange={(visible) => (showLabels.value = visible)}
+                        >
+                          Labels
+                        </VisibilityControl>
+                        <VisibilityControl
+                          visible={minimap.value}
+                          onChange={(visible) => (minimap.value = visible)}
+                        >
+                          Mini Map
+                        </VisibilityControl>
+                      </div>
+                    </div>
+                  );
+                }}
+              >
+                Inspector
+              </NavInspectorItem>
+            </InspectorNavBar>
+          </NavBar>
+        </>
       )}
-      <Inspector>
-        {() => {
-          if (!isActive) return <></>;
-          return (
-            <>
-              <PanelGroup className="image-inspector-controls">
-                <Panel defaultExpanded className="spine-table">
-                  <SpineTable
-                    expandedRows={segmentsExpandedRows}
-                    loader={annotations}
-                    selection={zRange.value}
-                    editingSegmentSignal={editingSegmentSignal}
-                    editMode={segmentEditMode}
-                  />
-                </Panel>
-                <Panel defaultExpanded>
-                  <ContrastControls
-                    sources={sources!}
-                    selections={selections}
-                    colors={colors}
-                    contrastLimits={contrastLimits}
-                    channelsVisible={channelsVisible}
-                  />
-                </Panel>
-                <Panel defaultExpanded>
-                  <VisibilityControl
-                    visible={showLineSegments.value}
-                    onChange={(visible) => (showLineSegments.value = visible)}
-                  >
-                    Line Segments
-                  </VisibilityControl>
-                  <VisibilityControl
-                    visible={showLineSegmentsRadius.value}
-                    onChange={(visible) =>
-                      (showLineSegmentsRadius.value = visible)
-                    }
-                  >
-                    Line Segments Bounds
-                  </VisibilityControl>
-                  <VisibilityControl
-                    visible={showLineSegmentsOrigin.value}
-                    onChange={(visible) =>
-                      (showLineSegmentsOrigin.value = visible)
-                    }
-                  >
-                    Line Segments Origin
-                  </VisibilityControl>
-                  <VisibilityControl
-                    visible={showSpines.value}
-                    onChange={(visible) => (showSpines.value = visible)}
-                  >
-                    Spines
-                  </VisibilityControl>
-                  <VisibilityControl
-                    visible={showAnchors.value}
-                    onChange={(visible) => (showAnchors.value = visible)}
-                  >
-                    Anchors
-                  </VisibilityControl>
-                  <VisibilityControl
-                    visible={showLabels.value}
-                    onChange={(visible) => (showLabels.value = visible)}
-                  >
-                    Labels
-                  </VisibilityControl>
-                  <VisibilityControl
-                    visible={minimap.value}
-                    onChange={(visible) => (minimap.value = visible)}
-                  >
-                    Mini Map
-                  </VisibilityControl>
-                </Panel>
-              </PanelGroup>
-            </>
-          );
-        }}
-      </Inspector>
+
       {annotations!.shape[0] === 0 ? (
-        <div className="flex items-center justify-center h-full w-full bg-[#1a1a1a] relative overflow-hidden">
-          <div>Missing Channel</div>
+        <div
+          className="flex items-center justify-center h-full w-full bg-[#1a1a1a] relative overflow-hidden pointer-events-auto"
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer.files.length === 0) return;
+
+            setLoading(true);
+            annotations.loadChannelDrop(e).finally(() => setLoading(false));
+          }}
+          onDragOver={handleDragOver}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <div>Image data not found</div>
+            <IconButton
+              className="h-[24px]"
+              loading={loading}
+              icon={<PlusIcon />}
+              onClick={async () => {
+                setLoading(true);
+                annotations.loadChannel().finally(() => setLoading(false));
+              }}
+              size="xs"
+            >
+              Import Channel
+            </IconButton>
+          </div>
+
           <div className="linked-control">
             <IconButton
               color="orange"
@@ -555,7 +675,6 @@ function ImageInnerView({
           contrastLimits={contrastLimits.value}
           selections={selections}
           linked={linked.value}
-          target={target.value}
           loader={annotations}
           layers={annotationLayers}
         >
@@ -567,6 +686,16 @@ function ImageInnerView({
             height={height}
           />
           <div className="linked-control">
+            <IconButton
+              color="orange"
+              icon={<IoHome />}
+              appearance="link"
+              size="xs"
+              circle
+              onClick={() => {
+                setImageViewPort(id, 0.95);
+              }}
+            />
             <IconButton
               color="orange"
               icon={linked.value ? <IoLinkSharp /> : <IoUnlinkSharp />}
@@ -601,4 +730,6 @@ function ImageInnerView({
   );
 }
 
-ImageView.title = "Image";
+ImageView.title = "Image Viewer";
+ImageView.shortTitle = "Image";
+ImageView.description = "Load, view and annotate raw images";

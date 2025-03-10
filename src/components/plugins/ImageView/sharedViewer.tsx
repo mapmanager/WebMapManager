@@ -1,4 +1,4 @@
-import { Color, OrthographicView } from "@deck.gl/core/typed";
+import { Color, OrthographicView } from "@deck.gl/core";
 import {
   ColorPaletteExtension,
   OVERVIEW_VIEW_ID,
@@ -20,7 +20,11 @@ const DEFAULT_CONTROLLER = {
 };
 
 interface ImageViewsState {
-  [id: string]: ImageViewerProps & { layers: any[] };
+  [id: string]: ImageViewerProps & {
+    layers: any[];
+    zoom?: number;
+    version?: number;
+  };
 }
 
 const ViewsContext = signal<ImageViewsState>({});
@@ -42,6 +46,7 @@ interface ImageViewerProps {
   target?: [number, number];
 }
 
+let counter = 0;
 export const ImageViewer = ({
   children,
   ...props
@@ -53,6 +58,7 @@ export const ImageViewer = ({
       ...ViewsContext.value,
       [props.id]: {
         ...props,
+        version: counter++,
       },
     };
 
@@ -63,8 +69,7 @@ export const ImageViewer = ({
       delete views[props.id];
       ViewsContext.value = views;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, Object.values(props) as any);
+  }, [props]);
 
   return <div className="ImageView">{children}</div>;
 };
@@ -86,6 +91,55 @@ const extensions = [new ColorPaletteExtension()];
 const getTooltip = ({ object, layer }: any) => {
   if (!layer || !layer.props.getTooltip || !object) return;
   return layer.props.getTooltip(object);
+};
+
+export const setImageViewPort = (
+  imageId: string,
+  zoom: number = MIN_ZOOM,
+  target?: [number, number]
+) => {
+  const viewStates = ViewsContext.peek();
+  if (!viewStates[imageId]) return;
+
+  const viewState = viewStates[imageId] as any;
+  if (!target) {
+    const defaultViewState = getDefaultInitialViewState(
+      [viewState.loader],
+      { height: viewState.height, width: viewState.width },
+      zoom
+    ) as any;
+
+    target = [...defaultViewState.target] as any;
+    zoom = defaultViewState.zoom;
+  }
+
+  let oldZoom = viewState.zoom;
+  if (oldZoom == zoom) {
+    // Force the viewer to reload even if the zoom is the same
+    zoom += 0.00000000000001;
+  }
+
+  const newViewState = {
+    ...viewState,
+    target,
+    zoom: Math.max(Math.min(zoom, MAX_ZOOM), MIN_ZOOM),
+    version: counter++,
+  };
+
+  const update = { ...viewStates } as any;
+  update[imageId] = newViewState;
+
+  if (viewState.minimap) {
+    const miniId = OVERVIEW_VIEW_ID + "-" + imageId;
+    update[miniId] = {
+      ...update[miniId],
+      target,
+      zoom: Math.max(Math.min(zoom, MAX_ZOOM), MIN_ZOOM),
+      version: counter++,
+    };
+  }
+
+  ViewsContext.value = update;
 };
 
 export const ImageViewerRoot = ({ children }: { children: any[] }) => {
@@ -163,35 +217,51 @@ export const ImageViewerRoot = ({ children }: { children: any[] }) => {
     const viewState = viewStates.peek();
     const newStates = {} as any;
 
-    for (const { id, height, width, minimap, target, loader } of viewsProps_) {
-      const targetPosition = target;
+    const linkedZViewState = viewsProps_.find(({ id, linked, zoom }) => linked && (zoom !== undefined || viewState[id]?.zoom !== undefined));
+    let linkedZ = linkedZViewState ? linkedZViewState?.zoom ?? viewState[linkedZViewState.id]?.zoom : undefined;
+
+    for (const value of viewsProps_ as any) {
+      let {
+        id,
+        height,
+        width,
+        minimap,
+        target,
+        zoom,
+        loader,
+        version,
+        linked
+      } = value;
+      if (linked && linkedZ !== undefined) {
+        zoom = linkedZ;
+      }
 
       if (!Object.hasOwn(viewState, id)) {
         const defaultViewState = getDefaultInitialViewState(
           [loader],
           { height, width },
           0.5
-        );
+        ) as any;
 
-        if (targetPosition) {
-          (defaultViewState as any).zoom = MAX_ZOOM;
-          (defaultViewState as any).target = targetPosition;
+        if (linked && zoom === undefined && linkedZ === undefined) {
+          linkedZ = defaultViewState.zoom;
         }
 
         newStates[id] = {
           ...defaultViewState,
-          targeted: target,
+          zoom: zoom ?? defaultViewState.zoom,
+          target: target ?? defaultViewState.target,
+          version,
           id,
         };
-      } else if (target !== viewState[id].targeted) {
+      } else if (version !== viewState[id].version) {
         newStates[id] = {
           ...viewState[id],
-          zoom: MAX_ZOOM,
-          targeted: target,
+          target: target ?? viewState[id].target,
+          zoom: zoom ?? viewState[id].zoom,
+          version,
           id,
         };
-
-        if (targetPosition) newStates[id].target = targetPosition;
       }
 
       if (!minimap) continue;

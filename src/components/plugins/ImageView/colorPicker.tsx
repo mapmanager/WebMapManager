@@ -2,7 +2,6 @@ import { useSignal } from "@preact/signals-react";
 import React, { useCallback } from "react";
 import { GithubPicker, ColorResult } from "react-color";
 import { Color } from ".";
-import "./colorPicker.scss";
 
 export const COLORS_SELECTOR_OPTIONS = [
   "#ff00ff",
