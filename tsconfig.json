@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ESNext",    
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
+    "types": ["vite/client"],
     "allowJs": true,
     "noImplicitThis": false,
     "skipLibCheck": true,
@@ -19,9 +20,19 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
-    "src"
+    "src",
+    "./build/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

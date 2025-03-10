@@ -1,3 +1,10 @@
+@import "tailwindcss";
+@import "./App.scss";
+@import "./components/Visibility.scss";
+@import "./components/plugins/ImageView/index.scss";
+@import "./components/plugins/ImageView/colorPicker.scss";
+@import 'rsuite/dist/rsuite.min.css';
+
 body {
   user-select: none;
   overflow: hidden;
