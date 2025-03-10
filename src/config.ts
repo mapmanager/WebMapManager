@@ -9,14 +9,14 @@ export const multiTimePointEnabled =
  */
 export const SampleDataURLs = isDev
   ? [
-      // {
-      //   title: "Single time point - Local",
-      //   url: "/WebMapManager/single_timepoint.mmap.zip",
-      // },
+      {
+        title: "Single time point - Local",
+        url: "/WebMapManager/single_timepoint.mmap.zip",
+      },
     ]
   : [
-      // {
-      //   "title": "Single time point",
-      //   "url": "https://corsproxy.io/?url=https://github.com/mapmanager/MapManagerCore-Data/raw/refs/heads/main/data/single_timepoint.mmap.zip"
-      // },
+      {
+        "title": "Single time point",
+        "url": "https://corsproxy.io/?url=https://github.com/mapmanager/MapManagerCore-Data/raw/refs/heads/main/data/web_map_manager_single_timepoint.mmap.zip"
+      },
     ];
