@@ -36,4 +36,3 @@ export interface PluginProps {
 export { ImageView } from "./ImageView";
 export { ScatterPlotView } from "./ScatterPlotView";
 export { TableView } from "./Table";
-export { Loader } from "./Loader";

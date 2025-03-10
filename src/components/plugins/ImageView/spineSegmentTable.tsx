@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from "react";
-import { Table } from "rsuite";
+import React, { useCallback, useMemo, useRef } from "react";
+import { Popover, Table, Whisper } from "rsuite";
 import {
   DATA_VERSION,
   FILTERS,
@@ -13,6 +13,8 @@ import { PyPixelSourceTimePoint } from "../../../loaders/py_loader";
 import { IconButton } from "rsuite";
 import PlusIcon from "@rsuite/icons/Plus";
 import DeleteIcon from "@rsuite/icons/Trash";
+import { CirclePicker } from "react-color";
+import { COLORS_SELECTOR_OPTIONS } from "./colorPicker";
 
 const { Column, HeaderCell, Cell } = Table;
 
@@ -32,6 +34,53 @@ const SelectableCell = ({
 }) => {
   const isSpine = !props.rowData.segment;
   const selected = isSpine && props.rowData._id === selectedSpineId;
+
+  if (props.dataKey == "type" && !isSpine) {
+    const r = props.rowData.color.get(0);
+    const g = props.rowData.color.get(1);
+    const b = props.rowData.color.get(2);
+    const speaker = (
+      <Popover>
+        <CirclePicker
+          color={{ r, g, b }}
+          colors={COLORS_SELECTOR_OPTIONS}
+          onChange={({ rgb: { r, g, b } }) => {
+            props.rowData.setColor(props.rowData._id, [r, g, b]);
+          }}
+        />
+      </Popover>
+    );
+    return (
+      <Cell
+        {...props}
+        className={
+          (selected ? "selected" : "") +
+          (isSpine
+            ? " spine" + (props.rowData.invisible ? " invisible-cell" : "")
+            : "segment-cell")
+        }
+      >
+        <div
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <Whisper trigger="click" placement="auto" speaker={speaker}>
+            <div
+              style={{
+                width: 26,
+                height: 20,
+                backgroundColor: `rgb(${r},${g},${b})`,
+                borderRadius: 4,
+              }}
+            ></div>
+          </Whisper>
+        </div>
+      </Cell>
+    );
+  }
+
   return (
     <Cell
       {...props}
@@ -57,9 +106,9 @@ const ActionCell = ({
         <></>
       </Cell>
     );
+
   return (
     <Cell {...props}>
-      <></>
       <IconButton
         appearance="subtle"
         size="xs"
@@ -122,8 +171,12 @@ export const SpineTable = ({
     return segments.map((seg) => ({
       id: "segment" + seg.get("segmentID"),
       _id: Number(seg.get("segmentID")),
-      title: "Segment " + (Number(seg.get("segmentID"))),
+      title: "Segment " + Number(seg.get("segmentID")),
       segment: true,
+      color: seg.get("color"),
+      setColor: (id: number, color: number[]) => {
+        dataChanged(loader.setSegmentColor(id, color));
+      },
       onClick: (id: number) => {
         if (loader.deleteSegment(id)) {
           batch(() => {
@@ -140,12 +193,13 @@ export const SpineTable = ({
       children: seg.get("spines").map((d) => ({
         id: Number(d.get("id")),
         _id: Number(d.get("id")),
-        title: "" + (Number(d.get("id"))),
+        title: "" + Number(d.get("id")),
+        color: undefined,
         type: d.get("type"),
         invisible: d.get("invisible"),
       })),
     }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loader, selection, filter, DATA_VERSION.value, editingSegmentSignal]);
 
   const selectedSpineId = SELECTED_SPINE.value;

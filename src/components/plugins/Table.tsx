@@ -37,7 +37,6 @@ export const TableView = ({
     return SELECTED_SPINE.subscribe((spineId) => {
       if (!isAltKeyDown || !spineId || !tableRef.current || !visible) return;
       const idx = data.findIndex((d: any) => d.data[SPINE_ID] === spineId);
-      console.log("scrolling to", spineId, idx, data);
       if (idx === -1) return;
       tableRef.current!.scrollTop(ROW_HEIGHT * idx);
     });
@@ -57,11 +56,13 @@ export const TableView = ({
           return (
             <Column key={name} width={100} resizable>
               <HeaderCell>{names[index]}</HeaderCell>
-              <Cell fullText>{(rowData) => {
-                const data = rowData.data[index];
-                if (Number.isNaN(data)) return "Invalid";
-                return data;
-        }}</Cell>
+              <Cell fullText>
+                {(rowData) => {
+                  const data = rowData.data[index];
+                  if (Number.isNaN(data)) return "Invalid";
+                  return data;
+                }}
+              </Cell>
             </Column>
           );
         })}
@@ -69,3 +70,6 @@ export const TableView = ({
     </div>
   );
 };
+
+TableView.title = "Table";
+TableView.description = "A table viewer for analysis data.";

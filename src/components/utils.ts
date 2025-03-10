@@ -4,11 +4,12 @@ import { PyPixelSourceTimePoint } from "../loaders/py_loader";
 import { Signal, useSignal, useSignalEffect } from "@preact/signals-react";
 import {
   DATA_VERSION,
+  dataChanged,
   SELECTED_SEGMENT,
   SELECTED_SPINE,
   setFilters,
 } from "./plugins/globals";
-import { pyImageSource } from "../python";
+import { pyImageChannel } from "../python";
 
 export class EmptyImageSource {}
 
@@ -142,7 +143,7 @@ export function useRasterSources(
   loader: PyPixelSourceTimePoint | undefined,
   selections: ViewSelection[]
 ): {
-  sources?: (pyImageSource | undefined)[];
+  sources?: (pyImageChannel | undefined)[];
   error?: Error;
   loading: boolean;
 } {
@@ -155,7 +156,17 @@ export function useRasterSources(
     if (!loader || loader.shape[0] === 0) return [];
     const futures = selections.map((selection) => {
       if (!selection.visible) return Promise.resolve(undefined);
-      return loader.source(selection);
+      return loader.source(selection).then((source: any) => {
+        if (!source) return undefined;
+        source.deleteChannel = () => {
+          dataChanged(loader.deleteChannel(selection.c));
+        };
+
+        source.loadChannel = () => loader.loadChannel(selection.c);
+        source.loadChannelDrop = (e: any) =>
+          loader.loadChannelDrop(e, selection.c);
+        return source as pyImageChannel;
+      });
     });
 
     return await Promise.all(futures);

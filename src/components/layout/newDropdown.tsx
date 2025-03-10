@@ -10,7 +10,7 @@ import AddIcon from "./add.svg";
  * @param node The node which the component will be added to
  * @param component The name of the component to add
  */
-const addNew = (
+export const addNewTab = (
   node: FlexLayout.TabSetNode | FlexLayout.BorderNode,
   component: string
 ) => {
@@ -61,7 +61,7 @@ export const AddNew = ({ node }: Props) => {
         return (
           <Dropdown.Item
             key={pluginName}
-            onClick={() => addNew(node, pluginName)}
+            onClick={() => addNewTab(node, pluginName)}
           >
             {(plugin as any).title ?? pluginName}
           </Dropdown.Item>

@@ -4,7 +4,7 @@ import {
   LayerContext,
   LayerExtension,
   UpdateParameters,
-} from "@deck.gl/core/typed";
+} from "@deck.gl/core";
 
 const outlineShaders = {
   inject: {
@@ -101,6 +101,6 @@ export class OutlinePathExtension extends LayerExtension<OutlinePathExtensionOpt
       return;
     }
 
-    this.state.model.setUniforms({});
+    // this.state.model.setUniforms({});
   }
 }
