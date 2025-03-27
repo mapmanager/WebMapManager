@@ -1,3 +1,3 @@
 [submodule "src/MapManagerCore"]
-	path = MapManagerCore
+	path = packages/core/MapManagerCore
 	url = https://github.com/mapmanager/MapManagerCore.git

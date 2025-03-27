@@ -48,9 +48,6 @@ jobs:
     - name: Install dependencies
       run: yarn install
 
-    - name: Build python
-      run: yarn run build-python
-
     - name: Build the React app
       run: yarn run build
 
