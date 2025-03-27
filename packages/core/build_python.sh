@@ -21,6 +21,6 @@ rm -rf ./py/* || true
 python -m build --wheel --sdist ./MapManagerCore/ --outdir ./py/
 
 WHEEL_FILE=$(basename ./py/*.whl)
-echo -e "/* Generated file */ \nimport pyWheelPath from \"../py/$WHEEL_FILE\";\nexport {pyWheelPath};" > ./src/wheel_info.js
+echo -e "/* Generated file */\nimport pyWheelPath from \"../py/$WHEEL_FILE\";\nexport { pyWheelPath };" > ./src/wheel_info.js
 
 rm -rf ./py/*.tar.gz
