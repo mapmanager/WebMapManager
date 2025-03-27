@@ -7,6 +7,16 @@ export default defineConfig({
   base: "/WebMapManager/",
   build: {
     outDir: "./build",
+    rollupOptions: {
+      output: {
+        assetFileNames: (file) => {
+          if (file.names.some((x) => x.endsWith(".whl"))) {
+            return "assets/[name].[ext]";
+          }
+          return "assets/[name]-[hash].[ext]";
+        },
+      },
+    },
   },
   plugins: [
     react({
