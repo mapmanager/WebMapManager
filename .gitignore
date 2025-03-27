@@ -123,11 +123,14 @@ dist
 .vscode-test
 
 # yarn v2
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
 .pnp.*
+.yarn/*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
 .DS_Store
 __pycache__/
@@ -135,7 +138,5 @@ venv/
 src/wheel_info.json
 public/py/
 build/
-
-.yarn/
 
 **/*.whl
