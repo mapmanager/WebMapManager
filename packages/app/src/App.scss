@@ -1,0 +1,338 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.rs-modal-backdrop {
+  z-index: 1050 !important;
+}
+
+#inspector,
+#layout-grid-container,
+#main-view {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.layout {
+  .flexlayout__mini_scrollbar_container {
+    overflow: visible !important;
+  }
+}
+
+#layout-grid-container,
+.rs-dropdown-menu {
+  background-color: #1a1a1a !important;
+}
+
+#inspector {
+  width: 350px;
+  height: 100%;
+  position: relative;
+  background: #151515;
+  overflow-y: scroll;
+  border-right: 1px rgb(40, 40, 40) solid;
+  flex-shrink: 0;
+  overflow-x: hidden;
+  transition: width 0.1s ease-in-out;
+  border-top: none;
+  border-bottom: 0;
+
+  &.hidden {
+    width: 0 !important;
+  }
+
+  h1 {
+    margin: 15px;
+    margin-bottom: 20px;
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .rs-panel-group {
+    border-radius: 0px;
+  }
+
+  .rs-panel + .rs-panel:before {
+    border-color: transparent;
+    left: 0px;
+    right: 0px;
+  }
+
+  .rs-panel {
+    border-radius: 0px;
+  }
+
+  .rs-panel-collapse[aria-expanded="true"] {
+    height: auto;
+  }
+
+  .rs-panel-header {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .rs-panel-collapsible > .rs-panel-header > .rs-icon {
+    top: 16px;
+  }
+
+  .rs-anim-collapsing,
+  .rs-icon {
+    transition-duration: 0s;
+  }
+
+  .rs-panel-title {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    font-size: 14px;
+  }
+}
+
+.rs-panel-header + .rs-panel-body,
+.rs-panel-header + .rs-panel-collapse .rs-panel-body {
+  padding-top: 0 !important;
+}
+
+.rs-panel-body,
+.rs-panel-header {
+  padding: 15px !important;
+}
+
+#layout-grid-container {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  position: relative;
+  overflow-y: scroll;
+}
+
+#main-view {
+  flex-grow: 1;
+}
+
+.flexlayout__tabset,
+.flexlayout__tab,
+.flexlayout__layout {
+  background: transparent !important;
+}
+
+.flexlayout__tab_button--selected,
+.flexlayout__tabset-maximized {
+  background-color: rgb(45 45 45) !important;
+}
+
+.flexlayout__tabset-selected {
+  background-image: none !important;
+  .flexlayout__tab_button--selected {
+    font-weight: bold;
+    background: rgb(80, 80, 80) !important;
+  }
+}
+
+.flexlayout__splitter {
+  background-color: rgb(50, 50, 50) !important;
+}
+
+.flexlayout__tabset_tabbar_outer,
+.flexlayout__tabset_tabbar_inner {
+  &:has(.rs-dropdown-open) {
+    overflow: visible !important;
+  }
+}
+
+.flexlayout__layout {
+  pointer-events: none;
+  .flexlayout__tabset_content > *,
+  .flexlayout__splitter,
+  .flexlayout__tabset_tabbar_outer {
+    pointer-events: auto;
+  }
+}
+
+.flexlayout__tab_button_top {
+  border-radius: 0px !important;
+}
+
+// Only enable events on inactive tabs using z-control
+.flexlayout__tab {
+  pointer-events: auto;
+}
+
+.flexlayout__tab:has(.ImageView) {
+  pointer-events: none;
+}
+
+.loading-file {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 1);
+}
+
+.loading-container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+#root-application {
+  display: flex;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  width: 100%;
+
+  .rs-sidenav {
+    border-right: 1px rgb(50, 50, 50) solid;
+    background: #121212 !important;
+    max-width: 250px;
+  }
+
+  .rs-sidenav-default,
+  .rs-sidenav-default .rs-dropdown-toggle,
+  .rs-sidenav-default .rs-sidenav-item,
+  .rs-sidenav-default .rs-sidenav-toggle-button {
+    background: #00000000;
+    font-weight: 800;
+  }
+
+  .rs-sidenav-item-disabled {
+    opacity: 0.45;
+  }
+}
+
+.rs-tree-node-label {
+  width: 100%;
+}
+
+.rs-tree-view {
+  max-height: none !important;
+  padding: 8px;
+}
+
+.rs-theme-dark {
+  .layout {
+    --rs-primary-50: #f2f9ff;
+    --rs-primary-100: #e4ecf5;
+    --rs-primary-200: #d3deeb;
+    --rs-primary-300: #c5d3e3;
+    --rs-primary-400: #b6c5d9;
+    --rs-primary-500: #a7b8cf;
+    --rs-primary-600: #7998c7;
+    --rs-primary-700: #4b75b8;
+    --rs-primary-800: #2250a1;
+    --rs-primary-900: #012e82;
+
+    // Spectrum
+    --rs-color-red: #f44336;
+    --rs-color-orange: #fa8900;
+    --rs-color-yellow: #ffb300;
+    --rs-color-green: #4caf50;
+    --rs-color-cyan: #00bcd4;
+    --rs-color-blue: #2196f3;
+    --rs-color-violet: #673ab7;
+  }
+}
+
+.form-group-compressed {
+  margin-bottom: 0px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  .rs-form-control {
+    > div {
+      max-width: 120px;
+    }
+  }
+
+  .rs-form-control-label {
+    text-align: left !important;
+    margin-bottom: 0px !important;
+    padding-bottom: 4px !important;
+    padding-top: 4px !important;
+    flex-grow: 1;
+  }
+
+  .rs-form-help-text {
+    max-width: 400px;
+    padding-top: 0px !important;
+    padding-bottom: 0px !important;
+  }
+}
+
+.sub-title {
+  padding-top: 16px;
+  padding-bottom: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  background: #1a1a1a;
+  padding: 16px;
+}
+
+.layout {
+  .rs-notification {
+    pointer-events: auto;
+    left: 16px;
+    top: 16px;
+    right: 38px;
+    display: block;
+    position: absolute;
+    padding-bottom: 4px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 320px;
+  }
+
+  .rs-notification-content {
+    max-width: none;
+    padding: 15px 20px;
+  }
+
+  .rs-notification-description {
+    font-weight: 700;
+  }
+
+  .rs-sidenav-nav
+    > .rs-dropdown
+    .rs-dropdown-toggle
+    > .rs-icon:not(.rs-dropdown-toggle-caret),
+  .rs-sidenav-nav > .rs-sidenav-item > svg:not(.rs-dropdown-toggle-caret) {
+    font-size: 16px;
+    height: 20px;
+    left: 20px;
+    line-height: 1.25;
+    margin-right: 20px;
+    position: absolute;
+    top: 15px;
+  }
+}
+
+.rs-panel {
+  overflow: visible;
+}
+
+.rs-anim-collapse {
+  display: inherit !important;
+  overflow: hidden;
+  height: 0px;
+}

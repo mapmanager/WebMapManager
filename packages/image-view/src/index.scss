@@ -1,0 +1,324 @@
+.controls {
+  position: absolute;
+  z-index: 1400;
+  width: 100%;
+  height: 100%;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: row;
+  pointer-events: none;
+}
+
+.text-xxs {
+  font-size: 10px;
+  line-height: 1rem; /* 16px */
+}
+
+.z-control {
+  right: 0px;
+  top: 0px;
+  bottom: 23px;
+
+  height: calc(100% - 22px - 23px);
+  width: 22px;
+  overflow: hidden;
+
+  .z-slides {
+    flex-grow: 1;
+  }
+
+  .slide {
+    transform: translateX(15%);
+    pointer-events: none;
+  }
+}
+
+.linked-control {
+  bottom: 0px;
+  right: 0px;
+  pointer-events: all;
+
+  width: 22px;
+  height: 22px * 2;
+  line-height: 0;
+}
+
+.ImageView {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.t-control {
+  left: 0px;
+  bottom: 0px;
+  pointer-events: all;
+
+  width: 100%;
+  height: 22px;
+  display: flex;
+  align-items: center;
+
+  .slides {
+    max-width: calc(100% - 56px);
+    flex-grow: 1;
+    flex-shrink: 1;
+    display: flex;
+    flex-direction: row;
+    justify-content: stretch;
+    align-items: center;
+    padding: 0px 5px;
+    height: 100%;
+  }
+
+  .slide {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: rgba(74, 74, 74, 0.87);
+    border-color: rgba(48, 48, 48, 0.87);
+    border-width: 1px;
+
+    height: 70%;
+    flex-grow: 1;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 13px;
+    text-align: center;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    transition: all 0.35s ease;
+    flex-grow: 1;
+    flex-shrink: 2;
+
+    &.selected {
+      background: rgba(255, 255, 255, 0.4);
+      flex-grow: 2;
+      flex-shrink: 1;
+      padding-left: 15px;
+      padding-right: 15px;
+    }
+
+    &.in-range {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+}
+
+.time-point-label {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  bottom: 0px;
+  right: 23px;
+  min-width: 22px;
+  height: 22px;
+  line-height: 22px;
+  background: rgba(48, 48, 48, 0.87);
+  padding: 0px 8px;
+  pointer-events: all;
+
+  span {
+    display: none;
+  }
+  &:hover {
+    span {
+      display: inline-block;
+    }
+  }
+}
+
+.z-control, .t-control, .linked-control {
+  position: absolute;
+  background: rgba(48, 48, 48, 0.87);
+
+  .selection {
+    stroke: none;
+    fill: rgba(255, 255, 255, 0.4);
+    fill-opacity: 1;
+    rx: 4px;
+    shape-rendering: geometricPrecision;
+  }
+
+  .slide {
+    fill: rgba(74, 74, 74, 0.87);
+    rx: 2px;
+    shape-rendering: geometricPrecision;
+  }
+
+  .brush:hover {
+    .selection {
+      fill: rgba(255, 255, 255, 0.7);
+    }
+  }
+
+  .handle--n {
+    transform: translateY(0px);
+  }
+  .handle--s {
+    transform: translateY(0px);
+  }
+
+  .overlay {
+    cursor: default;
+  }
+}
+
+.contrast-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .selection {
+    stroke: none;
+    fill: none;
+  }
+
+  .overlay {
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .not-selected {
+    height: 100%;
+    fill: gray;
+    fill-opacity: 0.5;
+  }
+
+  .handle {
+    fill: white;
+  }
+
+  // Move the handles to the end of their range instead of the center.
+  .handle--e {
+    transform: translateX(-3px);
+  }
+  .handle--w {
+    transform: translateX(3px);
+  }
+
+  .contrast-path {
+    stroke-width: 1;
+  }
+
+  .contrast-control-container:last-of-type {
+    .contrast-control {
+      margin: 0px;
+    }
+    &::after {
+      bottom: 1px !important;
+    }
+  }
+  .contrast-control {
+    background: black;
+
+    border: 1px solid hsl(0, 0%, 23%);
+    display: block;
+    width: 100%;
+    height: 50px;
+  }
+
+  .contrast-control-container {
+    &.disabled, &.missing {
+      .contrast-control {
+        * {
+          opacity: 0;
+        }
+      }
+
+      position: relative;
+      &::after {
+        cursor: not-allowed;
+        position: absolute;
+        top: 2px;
+        bottom: 9px;
+        left: 1px;
+        right: 25px;
+        padding-left: 25px;
+        content: "Disabled";
+        text-align: center;
+        line-height: 46px;
+        font-size: 13px;
+        font-weight: 600;
+        color: gray;
+      }
+    }
+
+    &.missing {
+      &::after {
+        content: "Channel Not Found";
+      }
+    }
+  }
+
+  .visible {
+    padding-left: 4px;
+    width: 26px;
+    cursor: pointer;
+  }
+}
+
+.contrast-control-container {
+  display: flex;
+  align-items: center;
+}
+
+.image-inspector-controls {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+
+  .spine-table {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+
+    .rs-panel-body {
+      flex-grow: 1;
+      min-height: 150px;
+      padding-top: 0px !important;
+      padding-bottom: 0px !important;
+    }
+
+    .rs-table-cell,
+    .rs-table-hover .rs-table-row:hover .rs-table-cell,
+    .rs-table-hover .rs-table-row:hover .rs-table-cell-group,
+    .rs-table-row-expanded,
+    .rs-table-row-header,
+    .rs-table-row-header .rs-table-cell {
+      background-color: transparent !important;
+    }
+
+    .rs-table {
+      .spine {
+        cursor: pointer;
+        &.invisible-cell {
+          opacity: 0.5;
+        }
+      }
+
+      .segment-cell {
+        cursor: pointer;
+      }
+
+      .icon-button {
+        padding: 2px 4px;
+      }
+
+      .selected {
+        font-weight: bold;
+      }
+    }
+  }
+}
+
+.segment-not-found-c {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}

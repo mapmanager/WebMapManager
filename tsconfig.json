@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
-    "target": "ESNext",    
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "target": "ESNext",
+    "lib": ["dom", "dom.iterable", "esnext"],
     "types": ["vite/client"],
     "allowJs": true,
     "noImplicitThis": false,
@@ -16,23 +12,14 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "plugins": []
   },
-  "include": [
-    "src",
-    "./build/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src", "./build/types/**/*.ts", "./packages/**/*.ts"],
+  "exclude": ["node_modules"]
 }

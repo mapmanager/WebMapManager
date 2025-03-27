@@ -135,3 +135,7 @@ venv/
 src/wheel_info.json
 public/py/
 build/
+
+.yarn/
+
+**/*.whl
