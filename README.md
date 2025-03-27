@@ -11,5 +11,5 @@ A web version of PyMapManager
 * Run `yarn install` to install dependencies
 
 ## Running WebMapManager
-* Run `yarn start` to run the application
+* Run `yarn dev` to run the application
 * Open [http://localhost:3000](http://localhost:3000) to view it in the browser (Tested on Google Chrome).
