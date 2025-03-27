@@ -4,6 +4,12 @@
   },
   "python.formatting.provider": "none",
   "python.analysis.extraPaths": [
-    "./src/MapManagerCore",
+    "./packages/core/MapManagerCore"
   ],
+  "search.exclude": {
+    "**/.yarn": true,
+    "**/.pnp.*": true
+  },
+  "typescript.tsdk": ".yarn/sdks/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
 }

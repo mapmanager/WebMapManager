@@ -1,0 +1,14 @@
+{
+  "name": "@map-manager/example-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@preact/signals-react": "^3.0.1",
+    "react": "^19.0.0",
+    "rsuite": "^5.77.1"
+  }
+}

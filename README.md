@@ -32,9 +32,8 @@ A web version of PyMapManager.
       ```
 
 ## Running WebMapManager
-
 * Run the server:
 ```bash
-  yarn start
+  yarn dev
 ```
 * Open [http://localhost:3000](http://localhost:3000) to view it in the browser (Tested on Google Chrome).

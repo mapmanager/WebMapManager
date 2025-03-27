@@ -1,0 +1,17 @@
+{
+  "name": "@map-manager/scatter-plot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@preact/signals-react": "^3.0.1",
+    "d3": "^7.9.0",
+    "plotly.js": "^3.0.0",
+    "react": "^19.0.0",
+    "react-plotly.js": "^2.6.0",
+    "rsuite": "^5.77.1"
+  }
+}
