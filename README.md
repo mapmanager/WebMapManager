@@ -104,7 +104,7 @@ Follow these steps to set up the project for development:
   yarn dev
 ```
 
-2. Open [http://localhost:3000](http://localhost:3000) in the browser (tested on Google Chrome).
+2. Open [http://localhost:3001](http://localhost:3001) in the browser (tested on Google Chrome).
 
 ### Build WebMapManager
 
