@@ -23,8 +23,15 @@ import { MapManagerProps } from ".";
 // Handle undo/redo shortcuts
 const handleKeyDown = (event: KeyboardEvent) => {
   if ((event.ctrlKey || event.metaKey) && event.key === "z") {
-    if (event.shiftKey) mapSignal?.peek().redo();
-    else mapSignal?.peek().undo();
+    if (event.shiftKey) {
+      // abcursor: redo() commented out on 2024-12-19 due to potential backend state corruption concerns
+      console.log("Redo keyboard shortcut (Ctrl+Shift+Z) - disabled");
+      // mapSignal?.peek().redo();
+    }
+    else {
+      console.log("Undo keyboard shortcut (Ctrl+Z) triggered");
+      mapSignal?.peek().undo();
+    }
 
     dataChanged();
     event.preventDefault();

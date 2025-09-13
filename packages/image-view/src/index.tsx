@@ -7,6 +7,8 @@ import {
   DATA_VERSION,
   SELECTED_SEGMENT,
   SELECTED_SPINE,
+  mapSignal,
+  dataChanged,
 } from "@map-manager/app";
 import { ImageViewer, setImageViewPort } from "@map-manager/app";
 import { PluginProps } from "@map-manager/app";
@@ -36,6 +38,7 @@ import { MdEditRoad } from "react-icons/md";
 import { MdAddRoad } from "react-icons/md";
 import { RiMapPinAddFill } from "react-icons/ri";
 import { RiDragMoveLine } from "react-icons/ri";
+import { IoArrowUndoCircle, IoArrowRedoCircle } from "react-icons/io5";
 import { TScroll } from "./t";
 import { InspectorNavBar, NavInspectorItem } from "@map-manager/app";
 import InfoOutlineIcon from "@rsuite/icons/InfoOutline";
@@ -511,6 +514,31 @@ function ImageInnerView({
               >
                 Edit Segment Path
               </Nav.Item>
+              {/* abcursor: Undo/Redo buttons for annotation operations */}
+              <Nav.Item divider />
+              <Nav.Item
+                eventKey="undo"
+                icon={<IoArrowUndoCircle />}
+                active={false}
+                onClick={() => {
+                  mapSignal?.peek().undo();
+                  dataChanged();
+                }}
+              >
+                Undo
+              </Nav.Item>
+              {/* abcursor: Redo button commented out on 2024-12-19 due to potential backend state corruption concerns */}
+              {/* <Nav.Item
+                eventKey="redo"
+                icon={<IoArrowRedoCircle />}
+                active={false}
+                onClick={() => {
+                  mapSignal?.peek().redo();
+                  dataChanged();
+                }}
+              >
+                Redo
+              </Nav.Item> */}
             </Nav>
             <InspectorNavBar activeKey={inspectorActiveKey}>
               <NavInspectorItem
