@@ -162,6 +162,7 @@ export function useRasters(
 export function useRasterSources(
   map: MapManagerTimePointMap | undefined,
   viewState: ViewState[],
+  channelVisibility?: Signal<boolean[]>,
 ): {
   sources?: (pyImageChannel | undefined)[];
   error?: Error;
@@ -176,6 +177,13 @@ export function useRasterSources(
     if (!map || map.shape[0] === 0) return [];
     const futures = viewState.map((state) => {
       if (!state.visible) return Promise.resolve(undefined);
+      
+      // abcursor: Check channel visibility if provided
+      if (channelVisibility) {
+        const isVisible = channelVisibility.value[state.c] ?? true;
+        if (!isVisible) return Promise.resolve(undefined);
+      }
+      
       return map.source(state).then((source: any) => {
         if (!source) return undefined;
         source.deleteChannel = () => {
@@ -189,7 +197,7 @@ export function useRasterSources(
     });
 
     return await Promise.all(futures);
-  }, [map, viewState, version]);
+  }, [map, viewState, version, channelVisibility]);
 
   return { sources, error, loading };
 }
