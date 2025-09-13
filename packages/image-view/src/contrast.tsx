@@ -21,6 +21,7 @@ interface ContrastControlsProps {
   colors: Signal<Color[]>;
   contrastLimits: Signal<[number, number][]>;
   channelsVisible: Signal<boolean[]>;
+  channelVisibility: Signal<boolean[]>;
 }
 
 /**
@@ -32,13 +33,14 @@ export function ContrastControls({
   colors,
   contrastLimits,
   channelsVisible,
+  channelVisibility,
 }: ContrastControlsProps) {
   let colors_ = colors.value;
   return (
     <div className="contrast-controls">
       {viewState.map(({ visible, c: channel }) => (
         <ContrastControl
-          visible={visible}
+          visible={channelVisibility.value[channel] ?? true}
           contrastLimits={contrastLimits}
           channel={channel}
           source={sources ? sources[channel] : undefined}
@@ -50,9 +52,11 @@ export function ContrastControls({
             colors.value = newColors;
           }}
           toggleVisible={(visible) => {
-            const newState = [...channelsVisible.peek()];
-            newState[channel] = visible;
-            channelsVisible.value = newState as any;
+            // abcursor: Use channelVisibility instead of modifying channelsVisible
+            const newVisibility = [...channelVisibility.peek()];
+            newVisibility[channel] = visible;
+            channelVisibility.value = newVisibility;
+            // Don't modify channelsVisible array - keep channels included
           }}
         />
       ))}

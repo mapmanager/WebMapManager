@@ -134,6 +134,9 @@ export function ImageView(props: PluginProps) {
   const time = useSignal(0);
   const focusedIndex = useSignal(0);
   const gridCount = useSignal(1);
+  
+  // abcursor: Dynamic channel visibility array (adapts to any number of channels)
+  const channelVisibility = useSignal<boolean[]>([]);
 
   const heightOffset = useComputed(() => {
     void DATA_VERSION.value;
@@ -204,6 +207,7 @@ export function ImageView(props: PluginProps) {
               showLabels={showLabels}
               showLineSegmentsRadius={showLineSegmentsRadius}
               showLineSegmentsOrigin={showLineSegmentsOrigin}
+              channelVisibility={channelVisibility}
               {...props}
               isActive={active}
               id={props.id + idx}
@@ -240,6 +244,7 @@ interface ImageInnerViewProps extends PluginProps {
   showLineSegmentsRadius: Signal<boolean>;
   showLineSegmentsOrigin: Signal<boolean>;
   time: number;
+  channelVisibility: Signal<boolean[]>;
 }
 
 export const handleDragOver = (
@@ -266,6 +271,7 @@ function ImageInnerView({
   showLineSegmentsRadius,
   showLineSegmentsOrigin,
   time,
+  channelVisibility,
 }: ImageInnerViewProps) {
   const annotations = useMemo(() => map.getTimePoint(time), [time, map]);
   const linked = useSignal(true);
@@ -318,6 +324,15 @@ function ImageInnerView({
     globalContrastLimits.value = Array(maxChannels).fill(DEFAULT_CONTRAST);
   }, [version, channelsVisible, contrastLimits, map]);
 
+  // abcursor: Initialize channel visibility based on loaded channels
+  useEffect(() => {
+    const maxChannels = map.maxChannels();
+    if (maxChannels > 0) {
+      // Initialize with all channels visible
+      channelVisibility.value = new Array(maxChannels).fill(true);
+    }
+  }, [map, DATA_VERSION.value]);
+
   const zRange = useSignal<ZRange>([35, 36]);
   const visible = visibleSignal.value;
 
@@ -329,7 +344,7 @@ function ImageInnerView({
       time,
     }));
   }, [zRange.value, time, channelsVisible.value]);
-  const { sources, error } = useRasterSources(annotations, viewStates);
+  const { sources, error } = useRasterSources(annotations, viewStates, channelVisibility);
 
   useEffect(() => {
     if (!isActive) return;
@@ -606,6 +621,7 @@ function ImageInnerView({
                           colors={colors}
                           contrastLimits={contrastLimits}
                           channelsVisible={channelsVisible}
+                          channelVisibility={channelVisibility}
                         />
                       </div>
                       <div>
