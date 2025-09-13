@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "voxel": {
+      "x": 100,
+      "y": 100,
+      "z": 10
+    },
+    "physicalSize": {
+      "x": 0.15,
+      "y": 0.15,
+      "z": 1.0
+    },
+    "channelNames": {
+      "0": "channel_0",
+      "1": "channel_1"
+    },
+    "contrast": {
+      "minInt": 0,
+      "maxInt": 255
+    }
+  },
+  "annotations": {
+    "points": [
+      {
+        "id": 1,
+        "x": 50.0,
+        "y": 50.0,
+        "z": 5,
+        "t": 0,
+        "spineId": 1
+      },
+      {
+        "id": 2,
+        "x": 60.0,
+        "y": 60.0,
+        "z": 5,
+        "t": 0,
+        "spineId": 1
+      }
+    ],
+    "segments": [
+      {
+        "id": 1,
+        "spineId": 1,
+        "color": [255, 0, 0],
+        "visible": true
+      }
+    ]
+  },
+  "imageData": {
+    "uint8": {
+      "shape": [10, 100, 100],
+      "dtype": "uint8",
+      "min": 0,
+      "max": 255
+    },
+    "uint16": {
+      "shape": [10, 100, 100],
+      "dtype": "uint16",
+      "min": 0,
+      "max": 65535
+    }
+  }
+}
