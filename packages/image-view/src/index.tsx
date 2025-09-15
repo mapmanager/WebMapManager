@@ -340,11 +340,18 @@ function ImageInnerView({
     return channelsVisible.value.map((visible, c) => ({
       z: zRange.value,
       c,
-      visible,
+      visible, // abcursor: Reverted to original - keep channelsVisible logic intact for Step 1
       time,
     }));
   }, [zRange.value, time, channelsVisible.value]);
   const { sources, error } = useRasterSources(annotations, viewStates, channelVisibility);
+  
+  // abcursor: Combine channelsVisible and channelVisibility for ImageViewer
+  const combinedChannelsVisible = useMemo(() => {
+    return channelsVisible.value.map((visible, c) => 
+      visible && (channelVisibility.value[c] ?? true) // abcursor: Combine both visibility signals for proper image rendering
+    );
+  }, [channelsVisible.value, channelVisibility.value]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -737,7 +744,7 @@ function ImageInnerView({
             y={y}
             width={width}
             height={height}
-            channelsVisible={channelsVisible.value}
+            channelsVisible={combinedChannelsVisible} // abcursor: Use combined visibility for proper image rendering
             minimap={minimap.value}
             colors={colors.value}
             contrastLimits={contrastLimits.value}
