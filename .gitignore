@@ -139,4 +139,6 @@ src/wheel_info.json
 public/py/
 build/
 
-**/*.whlpackages/core/src/__tests__/migrate-cudmore-dev/fixtures/*.tif
+**/*.whl
+
+packages/core/src/__tests__/migrate-cudmore-dev/fixtures/*.tif
