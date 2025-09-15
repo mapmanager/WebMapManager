@@ -127,7 +127,7 @@ export function ImageView(props: PluginProps) {
   const minimap = useSignal(false);
   const showLineSegments = useSignal(true);
   const showSpines = useSignal(true);
-  const showAnchors = useSignal(true);
+  const showAnchors = useSignal(true); // abb 20250915, setting to false also hides spine lines 
   const showLabels = useSignal(true);
   const showLineSegmentsRadius = useSignal(true);
   const showLineSegmentsOrigin = useSignal(true);
