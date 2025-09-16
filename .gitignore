@@ -142,3 +142,4 @@ build/
 **/*.whl
 
 packages/core/src/__tests__/migrate-cudmore-dev/fixtures/*.tif
+*.tif
