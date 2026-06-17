@@ -22,8 +22,10 @@ export const SampleDataURLs = [
   {
     title: "Single time point",
     url:
-      "https://corsproxy.io/?url=https://github.com/mapmanager/MapManagerCore-Data/raw/refs/heads/main/data/web_map_manager_single_timepoint.mmap.zip",
-  },
+    // abb 20260617 fixing live demo with cursor
+    //   "https://corsproxy.io/?url=https://github.com/mapmanager/MapManagerCore-Data/raw/refs/heads/main/data/web_map_manager_single_timepoint.mmap.zip",
+      "https://media.githubusercontent.com/media/mapmanager/MapManagerCore-Data/refs/heads/main/data/web_map_manager_single_timepoint.mmap.zip",
+    },
 ];
 
 root.render(<MapManager plugins={plugins} sampleData={SampleDataURLs} />);
